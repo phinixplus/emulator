@@ -1,0 +1,14 @@
+{
+	"version": "0.2.0",
+	"configurations": [
+		{
+			"type": "cppdbg",
+			"request": "launch",
+			"name": "Launch",
+			"preLaunchTask": "Cleanbuild (Debug)",
+			"program": "${workspaceRoot}/build/pplusemu",
+			"cwd": "${workspaceRoot}/",
+			"args": ["program.in"]
+		}
+	]
+}

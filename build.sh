@@ -7,9 +7,8 @@ outfile='pplusemu'
 
 function build {
 	case $1 in
-		# So far the minimum viable standard is C99
-		"release") GCC_ARGS="-Wall -Wextra -Werror -pedantic --std=c99 -O2" ;;
-		"debug") GCC_ARGS="-Wall -Wextra -pedantic --std=c99 -g" ;;
+		"release") GCC_ARGS="-Wall -Wextra -Werror -pedantic --std=c11 -O2" ;;
+		"debug") GCC_ARGS="-Wall -Wextra -pedantic --std=c11 -g" ;;
 	esac
 	build_rec $srcdir
 	binfiles=$(find $bindir -maxdepth 1 -mindepth 1 -type f -name "*.o")
@@ -24,20 +23,20 @@ function build_rec {
 
 	# Find and compile all C files in the current directory
 	find $1 -maxdepth 1 -mindepth 1 -type f -name "*.c" \
-	| while read -r srcfile ; do
-		filename=$(echo "$srcfile" | xargs basename | cut -d'.' -f1)
+	| while read -r this_srcfile ; do
+		filename=$(echo "$this_srcfile" | xargs basename | cut -d'.' -f1)
 		this_binfile="$this_bindir/$filename.o"
 		
 		mkdir -p "$this_bindir"
-		echo "Building: $srcfile -> $this_binfile"
-		gcc $GCC_ARGS -c -o "$this_binfile" $srcfile -Iincl -I"$this_incldir"
+		echo "Building: $this_srcfile -> $this_binfile"
+		gcc $GCC_ARGS -c -o "$this_binfile" $this_srcfile -Iincl -I"$this_incldir"
 	done
 
 	# Recurse for all subdirectories and then merge generated object files
 	find $1 -maxdepth 1 -mindepth 1 -type d \
-	| while read -r srcdir ; do
-		build_rec "$srcdir"
-		this_bindir=$(echo "$srcdir" | sed -e 's/src/bin/')
+	| while read -r this_srcdir ; do
+		build_rec "$this_srcdir"
+		this_bindir=$(echo "$this_srcdir" | sed -e "s/$srcdir/$bindir/")
 		binfiles=$(find $this_bindir -maxdepth 1 -mindepth 1 -type f -name "*.o")
 		binfiles=$(echo "$binfiles" | tr '\n' ' ')
 		echo "Merging: $binfiles -> ${this_bindir}_dir.o"
@@ -46,7 +45,7 @@ function build_rec {
 }
 
 function clean {
-	[[ -d bin/ ]] && rm -r bin/
+	[[ -d "$bindir/" ]] && rm -r "$bindir/"
 	return 0
 }
 

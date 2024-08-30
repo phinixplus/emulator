@@ -8,7 +8,7 @@
 			"preLaunchTask": "Cleanbuild (Debug)",
 			"program": "${workspaceRoot}/build/pplusemu",
 			"cwd": "${workspaceRoot}/",
-			"args": ["program.in"]
+			"args": ["test/mem.hex"]
 		}
 	]
 }

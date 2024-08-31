@@ -5,7 +5,22 @@ srcdir='source'
 incldir='include'
 outfile='pplusemu'
 
+function error {
+	echo "This build option requires $1."
+	exit
+}
+
+function assemble {
+	customasm --version >/dev/null || error "customasm"
+
+	mkdir -p "$bindir"
+	customasm "pplusdef.asm" "$1" -f logisim8 -o "$bindir/mem.hex"
+}
+
 function build {
+	gcc --version >/dev/null || error "gcc"
+	ld --version >/dev/null || error "ld"
+
 	case $1 in
 		"release") GCC_ARGS="-Wall -Wextra -Werror -pedantic --std=c11 -O2" ;;
 		"debug") GCC_ARGS="-Wall -Wextra -pedantic --std=c11 -g" ;;
@@ -50,6 +65,7 @@ function clean {
 }
 
 case $1 in
+	"assemble") assemble $2 ;;
 	"build") build $2 ;;
 	"clean") clean ;;
 esac

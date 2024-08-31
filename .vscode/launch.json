@@ -5,10 +5,10 @@
 			"type": "cppdbg",
 			"request": "launch",
 			"name": "Launch",
-			"preLaunchTask": "Cleanbuild (Debug)",
+			"preLaunchTask": "Launch",
 			"program": "${workspaceRoot}/build/pplusemu",
-			"cwd": "${workspaceRoot}/",
-			"args": ["test/mem.hex"]
+			"cwd": "${workspaceRoot}/build/",
+			"args": [ "mem.hex" ]
 		}
 	]
 }

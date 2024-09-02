@@ -44,7 +44,7 @@ function build_rec {
 		
 		mkdir -p "$this_bindir"
 		echo "Building: $this_srcfile -> $this_binfile"
-		gcc $GCC_ARGS -c -o "$this_binfile" $this_srcfile -Iincl -I"$this_incldir"
+		gcc $GCC_ARGS -c -o "$this_binfile" $this_srcfile -I"$incldir" -I"$this_incldir"
 	done
 
 	# Recurse for all subdirectories and then merge generated object files

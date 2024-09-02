@@ -6,11 +6,13 @@
 
 #define MEMORY_SIZE_KIB 1
 
+#pragma pack(push, 1)
 typedef union mem_datum {
 	uint32_t word;
 	uint16_t halves[2];
 	uint8_t bytes[4];
 } mem_datum_t;
+#pragma pack(pop)
 
 typedef mem_datum_t *mem_t;
 

@@ -81,50 +81,54 @@
 	c7 => 0x7`3
 }
 
-#ruledef half-reg-reg {
-	mov {dst: datareg} {src: datareg} => 0x00`8 @ {dst} @ {src}
-	mov {dst: datareg} {src: addrreg} => 0x01`8 @ {dst} @ {src}
-	mov {dst: addrreg} {src: datareg} => 0x02`8 @ {dst} @ {src}
-	mov {dst: addrreg} {src: addrreg} => 0x03`8 @ {dst} @ {src}
-	add {dst: datareg} {src: datareg} => 0x04`8 @ {dst} @ {src}
-	add {dst: addrreg} {src: addrreg} => 0x05`8 @ {dst} @ {src}
-	sub {dst: datareg} {src: datareg} => 0x06`8 @ {dst} @ {src}
-	sub {dst: addrreg} {src: addrreg} => 0x07`8 @ {dst} @ {src}
+#ruledef extras {
+	hlt => 0x00_00_00_00`8
+}
 
-	and {dst: datareg} {src: datareg} => 0x08`8 @ {dst} @ {src}
-	nnd {dst: datareg} {src: datareg} => 0x09`8 @ {dst} @ {src}
-	or  {dst: datareg} {src: datareg} => 0x0A`8 @ {dst} @ {src}
-	nor {dst: datareg} {src: datareg} => 0x0B`8 @ {dst} @ {src}
-	xor {dst: datareg} {src: datareg} => 0x0C`8 @ {dst} @ {src}
+#ruledef half_reg_reg {
+	mov {dst: datareg} {src: datareg} => 0x01`8 @ {dst} @ {src}
+	mov {dst: datareg} {src: addrreg} => 0x02`8 @ {dst} @ {src}
+	mov {dst: addrreg} {src: datareg} => 0x03`8 @ {dst} @ {src}
+	mov {dst: addrreg} {src: addrreg} => 0x04`8 @ {dst} @ {src}
+	add {dst: datareg} {src: datareg} => 0x05`8 @ {dst} @ {src}
+	add {dst: addrreg} {src: addrreg} => 0x06`8 @ {dst} @ {src}
+	sub {dst: datareg} {src: datareg} => 0x07`8 @ {dst} @ {src}
+	sub {dst: addrreg} {src: addrreg} => 0x08`8 @ {dst} @ {src}
 
-	lsl {dst: datareg} {src: datareg} => 0x0D`8 @ {dst} @ {src}
-	lsr {dst: datareg} {src: datareg} => 0x0E`8 @ {dst} @ {src}
-	asr {dst: datareg} {src: datareg} => 0x0F`8 @ {dst} @ {src}
-	lbl {dst: datareg} {src: datareg} => 0x10`8 @ {dst} @ {src}
-	lbr {dst: datareg} {src: datareg} => 0x11`8 @ {dst} @ {src}
-	abr {dst: datareg} {src: datareg} => 0x12`8 @ {dst} @ {src}
+	and {dst: datareg} {src: datareg} => 0x09`8 @ {dst} @ {src}
+	nnd {dst: datareg} {src: datareg} => 0x0A`8 @ {dst} @ {src}
+	ior {dst: datareg} {src: datareg} => 0x0B`8 @ {dst} @ {src}
+	nor {dst: datareg} {src: datareg} => 0x0C`8 @ {dst} @ {src}
+	xor {dst: datareg} {src: datareg} => 0x0D`8 @ {dst} @ {src}
 
-	lbs {tgt: datareg} {addr: datareg} => 0x13`8 @ {tgt} @ {addr}
-	lbs {tgt: datareg} {addr: addrreg} => 0x14`8 @ {tgt} @ {addr}
-	lbu {tgt: datareg} {addr: datareg} => 0x15`8 @ {tgt} @ {addr}
-	lbu {tgt: datareg} {addr: addrreg} => 0x16`8 @ {tgt} @ {addr}
-	sb  {tgt: datareg} {addr: datareg} => 0x17`8 @ {tgt} @ {addr}
-	sb  {tgt: datareg} {addr: addrreg} => 0x18`8 @ {tgt} @ {addr}
-	lhs {tgt: datareg} {addr: datareg} => 0x19`8 @ {tgt} @ {addr}
-	lhs {tgt: datareg} {addr: addrreg} => 0x1A`8 @ {tgt} @ {addr}
-	lhu {tgt: datareg} {addr: datareg} => 0x1B`8 @ {tgt} @ {addr}
-	lhu {tgt: datareg} {addr: addrreg} => 0x1C`8 @ {tgt} @ {addr}
-	sh  {tgt: datareg} {addr: datareg} => 0x1D`8 @ {tgt} @ {addr}
-	sh  {tgt: datareg} {addr: addrreg} => 0x1E`8 @ {tgt} @ {addr}
-	lw  {tgt: datareg} {addr: datareg} => 0x1F`8 @ {tgt} @ {addr}
-	lw  {tgt: datareg} {addr: addrreg} => 0x20`8 @ {tgt} @ {addr}
-	sw  {tgt: datareg} {addr: datareg} => 0x21`8 @ {tgt} @ {addr}
-	sw  {tgt: datareg} {addr: addrreg} => 0x22`8 @ {tgt} @ {addr}
+	slu {dst: datareg} {src: datareg} => 0x0E`8 @ {dst} @ {src}
+	sru {dst: datareg} {src: datareg} => 0x0F`8 @ {dst} @ {src}
+	srs {dst: datareg} {src: datareg} => 0x10`8 @ {dst} @ {src}
+	blu {dst: datareg} {src: datareg} => 0x11`8 @ {dst} @ {src}
+	bru {dst: datareg} {src: datareg} => 0x12`8 @ {dst} @ {src}
+	brs {dst: datareg} {src: datareg} => 0x13`8 @ {dst} @ {src}
 
-	jnl {dst: datareg} {src: datareg} => 0x23`8 @ {dst} @ {src}
-	jnl {dst: datareg} {src: addrreg} => 0x24`8 @ {dst} @ {src}
-	jnl {dst: addrreg} {src: datareg} => 0x25`8 @ {dst} @ {src}
-	jnl {dst: addrreg} {src: addrreg} => 0x26`8 @ {dst} @ {src}
+	lbu {tgt: datareg} {addr: datareg} => 0x14`8 @ {tgt} @ {addr}
+	lbu {tgt: datareg} {addr: addrreg} => 0x15`8 @ {tgt} @ {addr}
+	lbs {tgt: datareg} {addr: datareg} => 0x16`8 @ {tgt} @ {addr}
+	lbs {tgt: datareg} {addr: addrreg} => 0x17`8 @ {tgt} @ {addr}
+	sb  {tgt: datareg} {addr: datareg} => 0x18`8 @ {tgt} @ {addr}
+	sb  {tgt: datareg} {addr: addrreg} => 0x19`8 @ {tgt} @ {addr}
+	lhu {tgt: datareg} {addr: datareg} => 0x1A`8 @ {tgt} @ {addr}
+	lhu {tgt: datareg} {addr: addrreg} => 0x1B`8 @ {tgt} @ {addr}
+	lhs {tgt: datareg} {addr: datareg} => 0x1C`8 @ {tgt} @ {addr}
+	lhs {tgt: datareg} {addr: addrreg} => 0x1D`8 @ {tgt} @ {addr}
+	sh  {tgt: datareg} {addr: datareg} => 0x1E`8 @ {tgt} @ {addr}
+	sh  {tgt: datareg} {addr: addrreg} => 0x1F`8 @ {tgt} @ {addr}
+	lw  {tgt: datareg} {addr: datareg} => 0x20`8 @ {tgt} @ {addr}
+	lw  {tgt: datareg} {addr: addrreg} => 0x21`8 @ {tgt} @ {addr}
+	sw  {tgt: datareg} {addr: datareg} => 0x22`8 @ {tgt} @ {addr}
+	sw  {tgt: datareg} {addr: addrreg} => 0x23`8 @ {tgt} @ {addr}
+
+	jnl {dst: datareg} {src: datareg} => 0x24`8 @ {dst} @ {src}
+	jnl {dst: datareg} {src: addrreg} => 0x25`8 @ {dst} @ {src}
+	jnl {dst: addrreg} {src: datareg} => 0x26`8 @ {dst} @ {src}
+	jnl {dst: addrreg} {src: addrreg} => 0x27`8 @ {dst} @ {src}
 }
 
 #bankdef main {

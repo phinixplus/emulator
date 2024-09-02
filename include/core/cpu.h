@@ -18,6 +18,25 @@ typedef struct cpu {
 	mem_t memory;
 } cpu_t;
 
+#pragma pack(push, 1)
+typedef union instruction {
+	uint32_t instr_word;
+	struct {
+		// First byte of the instruction
+		uint8_t opcode;
+		union {
+			struct {
+				// Lower half of the second byte
+				unsigned src_r : 4;
+				// Upper half of the second byte
+				unsigned dst_r : 4;
+				uint16_t _padding;
+			} hrr;
+		};
+	};
+} instruction_t;
+#pragma pack(pop)
+
 void cpu_reset(cpu_t *cpu, mem_t memory);
 bool cpu_execute(cpu_t *cpu);
 

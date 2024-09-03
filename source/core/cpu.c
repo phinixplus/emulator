@@ -17,203 +17,203 @@ bool cpu_execute(cpu_t *cpu) {
 	switch(instr.opcode) {
 		case 0x00: return false;
 		case 0x01: // MOVxx
-			cpu->data[instr.hrr.dst_r] = cpu->data[instr.hrr.src_r];
+			cpu->data[instr.hgg.dst_r] = cpu->data[instr.hgg.src_r];
 			cpu->ip += 2;
 			break;
 		case 0x02: // MOVxy
-			cpu->data[instr.hrr.dst_r] = cpu->addr[instr.hrr.src_r];
+			cpu->data[instr.hgg.dst_r] = cpu->addr[instr.hgg.src_r];
 			cpu->ip += 2;
 			break;
 		case 0x03: // MOVyx
-			cpu->addr[instr.hrr.dst_r] = cpu->data[instr.hrr.src_r];
+			cpu->addr[instr.hgg.dst_r] = cpu->data[instr.hgg.src_r];
 			cpu->ip += 2;
 			break;
 		case 0x04: // MOVyy
-			cpu->addr[instr.hrr.dst_r] = cpu->addr[instr.hrr.src_r];
+			cpu->addr[instr.hgg.dst_r] = cpu->addr[instr.hgg.src_r];
 			cpu->ip += 2;
 			break;
 		case 0x05: // ADDrx
-			cpu->data[instr.hrr.dst_r] += cpu->data[instr.hrr.src_r];
+			cpu->data[instr.hgg.dst_r] += cpu->data[instr.hgg.src_r];
 			cpu->ip += 2;
 			break;
 		case 0x06: // ADDry
-			cpu->addr[instr.hrr.dst_r] += cpu->addr[instr.hrr.src_r];
+			cpu->addr[instr.hgg.dst_r] += cpu->addr[instr.hgg.src_r];
 			cpu->ip += 2;
 			break;
 		case 0x07: // SUBrx
-			cpu->data[instr.hrr.dst_r] -= cpu->data[instr.hrr.src_r];
+			cpu->data[instr.hgg.dst_r] -= cpu->data[instr.hgg.src_r];
 			cpu->ip += 2;
 			break;
 		case 0x08: // SUBry
-			cpu->addr[instr.hrr.dst_r] -= cpu->addr[instr.hrr.src_r];
+			cpu->addr[instr.hgg.dst_r] -= cpu->addr[instr.hgg.src_r];
 			cpu->ip += 2;
 			break;
 		case 0x09: // ANDrx
-			cpu->data[instr.hrr.dst_r] &= cpu->data[instr.hrr.src_r];
+			cpu->data[instr.hgg.dst_r] &= cpu->data[instr.hgg.src_r];
 			cpu->ip += 2;
 			break;
 		case 0x0A: // NNDrx
-			tmp1 = cpu->data[instr.hrr.dst_r] & cpu->data[instr.hrr.src_r];
-			cpu->data[instr.hrr.dst_r] = ~tmp1;
+			tmp1 = cpu->data[instr.hgg.dst_r] & cpu->data[instr.hgg.src_r];
+			cpu->data[instr.hgg.dst_r] = ~tmp1;
 			cpu->ip += 2;
 			break;
 		case 0x0B: // IORrx
-			cpu->data[instr.hrr.dst_r] |= cpu->data[instr.hrr.src_r];
+			cpu->data[instr.hgg.dst_r] |= cpu->data[instr.hgg.src_r];
 			cpu->ip += 2;
 			break;
 		case 0x0C: // NORrx
-			tmp1 = cpu->data[instr.hrr.dst_r] | cpu->data[instr.hrr.src_r];
-			cpu->data[instr.hrr.dst_r] = ~tmp1;
+			tmp1 = cpu->data[instr.hgg.dst_r] | cpu->data[instr.hgg.src_r];
+			cpu->data[instr.hgg.dst_r] = ~tmp1;
 			cpu->ip += 2;
 			break;
 		case 0x0D: // XORrx
-			cpu->data[instr.hrr.dst_r] ^= cpu->data[instr.hrr.src_r];
+			cpu->data[instr.hgg.dst_r] ^= cpu->data[instr.hgg.src_r];
 			cpu->ip += 2;
 			break;
 		case 0x0E: // SLUx
-			cpu->data[instr.hrr.dst_r] = cpu->data[instr.hrr.src_r] << 1;
+			cpu->data[instr.hgg.dst_r] = cpu->data[instr.hgg.src_r] << 1;
 			cpu->ip += 2;
 			break;
 		case 0x0F: // SRUx
-			cpu->data[instr.hrr.dst_r] = cpu->data[instr.hrr.src_r] >> 1;
+			cpu->data[instr.hgg.dst_r] = cpu->data[instr.hgg.src_r] >> 1;
 			cpu->ip += 2;
 			break;
 		case 0x10: // SRSx
-			tmp1 = (uint32_t)(((int32_t)cpu->data[instr.hrr.src_r]) >> 1);
-			cpu->data[instr.hrr.dst_r] = tmp1;
+			tmp1 = (uint32_t)(((int32_t)cpu->data[instr.hgg.src_r]) >> 1);
+			cpu->data[instr.hgg.dst_r] = tmp1;
 			cpu->ip += 2;
 			break;
 		case 0x11: // BLUrx
-			cpu->data[instr.hrr.dst_r] <<= cpu->data[instr.hrr.src_r] & 0x1F;
+			cpu->data[instr.hgg.dst_r] <<= cpu->data[instr.hgg.src_r] & 0x1F;
 			cpu->ip += 2;
 			break;
 		case 0x12: // BRUrx
-			cpu->data[instr.hrr.dst_r] >>= cpu->data[instr.hrr.src_r] & 0x1F;
+			cpu->data[instr.hgg.dst_r] >>= cpu->data[instr.hgg.src_r] & 0x1F;
 			cpu->ip += 2;
 			break;
 		case 0x13: // BRSrx
-			tmp1 = cpu->data[instr.hrr.src_r] & 0x1F;
-			tmp2 = (uint32_t)(((int32_t)cpu->data[instr.hrr.dst_r]) >> tmp1);
-			cpu->data[instr.hrr.dst_r] = tmp2;
+			tmp1 = cpu->data[instr.hgg.src_r] & 0x1F;
+			tmp2 = (uint32_t)(((int32_t)cpu->data[instr.hgg.dst_r]) >> tmp1);
+			cpu->data[instr.hgg.dst_r] = tmp2;
 			cpu->ip += 2;
 			break;
 		case 0x14: // LBUrx
-			tmp1 = mem_fetch_byte(cpu->memory, cpu->data[instr.hrr.src_r]);
-			cpu->data[instr.hrr.dst_r] = tmp1;
+			tmp1 = mem_fetch_byte(cpu->memory, cpu->data[instr.hgg.src_r]);
+			cpu->data[instr.hgg.dst_r] = tmp1;
 			cpu->ip += 2;
 			break;
 		case 0x15: // LBUry
-			tmp1 = mem_fetch_byte(cpu->memory, cpu->addr[instr.hrr.src_r]);
-			cpu->data[instr.hrr.dst_r] = tmp1;
+			tmp1 = mem_fetch_byte(cpu->memory, cpu->addr[instr.hgg.src_r]);
+			cpu->data[instr.hgg.dst_r] = tmp1;
 			cpu->ip += 2;
 			break;
 		case 0x16: // LBSrx
-			tmp1 = mem_fetch_byte(cpu->memory, cpu->data[instr.hrr.src_r]);
+			tmp1 = mem_fetch_byte(cpu->memory, cpu->data[instr.hgg.src_r]);
 			tmp1 |= (tmp1 & 1 << 7) ? 0xFFFFFF00 : 0;
-			cpu->data[instr.hrr.dst_r] = tmp1;
+			cpu->data[instr.hgg.dst_r] = tmp1;
 			cpu->ip += 2;
 			break;
 		case 0x17: // LBSry
-			tmp1 = mem_fetch_byte(cpu->memory, cpu->addr[instr.hrr.src_r]);
+			tmp1 = mem_fetch_byte(cpu->memory, cpu->addr[instr.hgg.src_r]);
 			tmp1 |= (tmp1 & 1 << 7) ? 0xFFFFFF00 : 0;
-			cpu->data[instr.hrr.dst_r] = tmp1;
+			cpu->data[instr.hgg.dst_r] = tmp1;
 			cpu->ip += 2;
 			break;
 		case 0x18: // SBrx
 			mem_store_byte(
 				cpu->memory,
-				cpu->data[instr.hrr.src_r],
-				(uint8_t)(cpu->data[instr.hrr.dst_r] & 0x000000FF)
+				cpu->data[instr.hgg.src_r],
+				(uint8_t)(cpu->data[instr.hgg.dst_r] & 0x000000FF)
 			);
 			cpu->ip += 2;
 			break;
 		case 0x19: // SBry
 			mem_store_byte(
 				cpu->memory,
-				cpu->addr[instr.hrr.src_r],
-				(uint8_t)(cpu->data[instr.hrr.dst_r] & 0x000000FF)
+				cpu->addr[instr.hgg.src_r],
+				(uint8_t)(cpu->data[instr.hgg.dst_r] & 0x000000FF)
 			);
 			cpu->ip += 2;
 			break;
 		case 0x1A: // LHUrx
-			tmp1 = mem_fetch_half(cpu->memory, cpu->data[instr.hrr.src_r]);
-			cpu->data[instr.hrr.dst_r] = tmp1;
+			tmp1 = mem_fetch_half(cpu->memory, cpu->data[instr.hgg.src_r]);
+			cpu->data[instr.hgg.dst_r] = tmp1;
 			cpu->ip += 2;
 			break;
 		case 0x1B: // LHUry
-			tmp1 = mem_fetch_half(cpu->memory, cpu->addr[instr.hrr.src_r]);
-			cpu->data[instr.hrr.dst_r] = tmp1;
+			tmp1 = mem_fetch_half(cpu->memory, cpu->addr[instr.hgg.src_r]);
+			cpu->data[instr.hgg.dst_r] = tmp1;
 			cpu->ip += 2;
 			break;
 		case 0x1C: // LHSrx
-			tmp1 = mem_fetch_half(cpu->memory, cpu->data[instr.hrr.src_r]);
+			tmp1 = mem_fetch_half(cpu->memory, cpu->data[instr.hgg.src_r]);
 			tmp1 |= (tmp1 & 1 << 7) ? 0xFFFFFF00 : 0;
-			cpu->data[instr.hrr.dst_r] = tmp1;
+			cpu->data[instr.hgg.dst_r] = tmp1;
 			cpu->ip += 2;
 			break;
 		case 0x1D: // LHSry
-			tmp1 = mem_fetch_half(cpu->memory, cpu->addr[instr.hrr.src_r]);
+			tmp1 = mem_fetch_half(cpu->memory, cpu->addr[instr.hgg.src_r]);
 			tmp1 |= (tmp1 & 1 << 7) ? 0xFFFFFF00 : 0;
-			cpu->data[instr.hrr.dst_r] = tmp1;
+			cpu->data[instr.hgg.dst_r] = tmp1;
 			cpu->ip += 2;
 			break;
 		case 0x1E: // SHrx
 			mem_store_half(
 				cpu->memory,
-				cpu->data[instr.hrr.src_r],
-				(uint16_t)(cpu->data[instr.hrr.dst_r] & 0x0000FFFF)
+				cpu->data[instr.hgg.src_r],
+				(uint16_t)(cpu->data[instr.hgg.dst_r] & 0x0000FFFF)
 			);
 			cpu->ip += 2;
 			break;
 		case 0x1F: // SHry
 			mem_store_half(
 				cpu->memory,
-				cpu->addr[instr.hrr.src_r],
-				(uint16_t)(cpu->data[instr.hrr.dst_r] & 0x0000FFFF)
+				cpu->addr[instr.hgg.src_r],
+				(uint16_t)(cpu->data[instr.hgg.dst_r] & 0x0000FFFF)
 			);
 			cpu->ip += 2;
 			break;
 		case 0x20: // LWrx
-			tmp1 = mem_fetch_word(cpu->memory, cpu->data[instr.hrr.src_r]);
-			cpu->data[instr.hrr.dst_r] = tmp1;
+			tmp1 = mem_fetch_word(cpu->memory, cpu->data[instr.hgg.src_r]);
+			cpu->data[instr.hgg.dst_r] = tmp1;
 			cpu->ip += 2;
 			break;
 		case 0x21: // LWry
-			tmp1 = mem_fetch_word(cpu->memory, cpu->addr[instr.hrr.src_r]);
-			cpu->data[instr.hrr.dst_r] = tmp1;
+			tmp1 = mem_fetch_word(cpu->memory, cpu->addr[instr.hgg.src_r]);
+			cpu->data[instr.hgg.dst_r] = tmp1;
 			cpu->ip += 2;
 			break;
 		case 0x22: // SWrx
 			mem_store_word(
 				cpu->memory,
-				cpu->data[instr.hrr.src_r],
-				cpu->data[instr.hrr.dst_r]
+				cpu->data[instr.hgg.src_r],
+				cpu->data[instr.hgg.dst_r]
 			);
 			cpu->ip += 2;
 			break;
 		case 0x23: // SWry
 			mem_store_word(
 				cpu->memory,
-				cpu->addr[instr.hrr.src_r],
-				cpu->data[instr.hrr.dst_r]
+				cpu->addr[instr.hgg.src_r],
+				cpu->data[instr.hgg.dst_r]
 			);
 			cpu->ip += 2;
 			break;
 		case 0x24: // JNLrxx
-			cpu->data[instr.hrr.dst_r] = cpu->ip + 2;
-			cpu->ip = cpu->data[instr.hrr.src_r];
+			cpu->data[instr.hgg.dst_r] = cpu->ip + 2;
+			cpu->ip = cpu->data[instr.hgg.src_r];
 			break;
 		case 0x25: // JNLrxy
-			cpu->data[instr.hrr.dst_r] = cpu->ip + 2;
-			cpu->ip = cpu->addr[instr.hrr.src_r];
+			cpu->data[instr.hgg.dst_r] = cpu->ip + 2;
+			cpu->ip = cpu->addr[instr.hgg.src_r];
 			break;
 		case 0x26: // JNLryx
-			cpu->addr[instr.hrr.dst_r] = cpu->ip + 2;
-			cpu->ip = cpu->data[instr.hrr.src_r];
+			cpu->addr[instr.hgg.dst_r] = cpu->ip + 2;
+			cpu->ip = cpu->data[instr.hgg.src_r];
 			break;
 		case 0x27: // JNLryy
-			cpu->addr[instr.hrr.dst_r] = cpu->ip + 2;
-			cpu->ip = cpu->addr[instr.hrr.src_r];
+			cpu->addr[instr.hgg.dst_r] = cpu->ip + 2;
+			cpu->ip = cpu->addr[instr.hgg.src_r];
 			break;
 		case 0x28: case 0x29: case 0x2A: case 0x2B:
 		case 0x2C: case 0x2D: case 0x2E: case 0x2F:

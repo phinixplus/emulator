@@ -26,12 +26,16 @@ typedef union instruction {
 		uint8_t opcode;
 		union {
 			struct {
-				// Lower half of the second byte
 				unsigned src_r : 4;
-				// Upper half of the second byte
 				unsigned dst_r : 4;
 				uint16_t _padding;
-			} hrr;
+			} hgg;
+			struct {
+				unsigned tgt_c : 3;
+				unsigned neg : 1;
+				unsigned tgt_r : 4;
+				uint16_t _padding;
+			} hgc;
 		};
 	};
 } instruction_t;

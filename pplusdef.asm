@@ -81,11 +81,7 @@
 	c7 => 0x7`3
 }
 
-#ruledef extras {
-	hlt => 0x00_00_00_00`8
-}
-
-#ruledef half_reg_reg {
+#ruledef half_gpr_gpr {
 	mov {dst: datareg} {src: datareg} => 0x01`8 @ {dst} @ {src}
 	mov {dst: datareg} {src: addrreg} => 0x02`8 @ {dst} @ {src}
 	mov {dst: addrreg} {src: datareg} => 0x03`8 @ {dst} @ {src}
@@ -129,6 +125,35 @@
 	jnl {dst: datareg} {src: addrreg} => 0x25`8 @ {dst} @ {src}
 	jnl {dst: addrreg} {src: datareg} => 0x26`8 @ {dst} @ {src}
 	jnl {dst: addrreg} {src: addrreg} => 0x27`8 @ {dst} @ {src}
+}
+
+#ruledef half_gpr_cnd {
+	tst zer {cnd: condreg} {gpr: datareg} => 0x28`8 @ {gpr} @ 0`1 @ {cnd}
+	tst nzr {cnd: condreg} {gpr: datareg} => 0x28`8 @ {gpr} @ 1`1 @ {cnd}
+	tst odd {cnd: condreg} {gpr: datareg} => 0x29`8 @ {gpr} @ 0`1 @ {cnd}
+	tst evn {cnd: condreg} {gpr: datareg} => 0x29`8 @ {gpr} @ 1`1 @ {cnd}
+	tst neg {cnd: condreg} {gpr: datareg} => 0x2A`8 @ {gpr} @ 0`1 @ {cnd}
+	tst pos {cnd: condreg} {gpr: datareg} => 0x2A`8 @ {gpr} @ 1`1 @ {cnd}
+
+	jmp {cnd: condreg} {gpr: datareg}     => 0x2B @ {gpr} @ 0`1 @ {cnd}
+	jmp !{cnd: condreg} {gpr: datareg}    => 0x2B @ {gpr} @ 1`1 @ {cnd}
+	jmp {cnd: condreg} ip {gpr: datareg}  => 0x2C @ {gpr} @ 0`1 @ {cnd}
+	jmp !{cnd: condreg} ip {gpr: datareg} => 0x2C @ {gpr} @ 1`1 @ {cnd}
+	jmp {cnd: condreg} {gpr: addrreg}     => 0x2D @ {gpr} @ 0`1 @ {cnd}
+	jmp !{cnd: condreg} {gpr: addrreg}    => 0x2D @ {gpr} @ 1`1 @ {cnd}
+	jmp {cnd: condreg} ip {gpr: addrreg}  => 0x2E @ {gpr} @ 0`1 @ {cnd}
+	jmp !{cnd: condreg} ip {gpr: addrreg} => 0x2E @ {gpr} @ 1`1 @ {cnd}
+}
+
+#ruledef extras {
+	hlt => 0x00_00_00_00`8
+}
+
+#ruledef pseudo {
+	jmp {gpr: datareg} => { jmp !c0 {gpr}}
+	jmp {gpr: addrreg} => { jmp !c0 {gpr}}
+	jmp ip {gpr: datareg} => { jmp !c0 ip {gpr}}
+	jmp ip {gpr: addrreg} => { jmp !c0 ip {gpr}}
 }
 
 #bankdef main {

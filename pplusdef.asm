@@ -150,10 +150,10 @@
 }
 
 #ruledef pseudo {
-	jmp {gpr: datareg} => { jmp !c0 {gpr}}
-	jmp {gpr: addrreg} => { jmp !c0 {gpr}}
-	jmp ip {gpr: datareg} => { jmp !c0 ip {gpr}}
-	jmp ip {gpr: addrreg} => { jmp !c0 ip {gpr}}
+	jmp {gpr: datareg} => asm { jmp !c0 {gpr}}
+	jmp {gpr: addrreg} => asm { jmp !c0 {gpr}}
+	jmp ip {gpr: datareg} => asm { jmp !c0 ip {gpr}}
+	jmp ip {gpr: addrreg} => asm { jmp !c0 ip {gpr}}
 }
 
 #bankdef main {

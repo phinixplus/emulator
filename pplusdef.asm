@@ -141,18 +141,50 @@
 	tst odd {cnd: condreg} {gpr: addrreg} => 0x2D`8 @ {gpr} @ 0`1 @ {cnd}
 	tst evn {cnd: condreg} {gpr: addrreg} => 0x2D`8 @ {gpr} @ 1`1 @ {cnd}
 
-	jmp {gpr: datareg} if {cnd: condreg}     => 0x2E @ {gpr} @ 0`1 @ {cnd}
-	jmp {gpr: datareg} if !{cnd: condreg}    => 0x2E @ {gpr} @ 1`1 @ {cnd}
-	jmp {gpr: addrreg} if {cnd: condreg}     => 0x2F @ {gpr} @ 0`1 @ {cnd}
-	jmp {gpr: addrreg} if !{cnd: condreg}    => 0x2F @ {gpr} @ 1`1 @ {cnd}
-	jmp ip {gpr: datareg} if {cnd: condreg}  => 0x30 @ {gpr} @ 0`1 @ {cnd}
-	jmp ip {gpr: datareg} if !{cnd: condreg} => 0x30 @ {gpr} @ 1`1 @ {cnd}
-	jmp ip {gpr: addrreg} if {cnd: condreg}  => 0x31 @ {gpr} @ 0`1 @ {cnd}
-	jmp ip {gpr: addrreg} if !{cnd: condreg} => 0x31 @ {gpr} @ 1`1 @ {cnd}
+	jmp {gpr: datareg} if {cnd: condreg}     => 0x2E`8 @ {gpr} @ 0`1 @ {cnd}
+	jmp {gpr: datareg} if !{cnd: condreg}    => 0x2E`8 @ {gpr} @ 1`1 @ {cnd}
+	jmp {gpr: addrreg} if {cnd: condreg}     => 0x2F`8 @ {gpr} @ 0`1 @ {cnd}
+	jmp {gpr: addrreg} if !{cnd: condreg}    => 0x2F`8 @ {gpr} @ 1`1 @ {cnd}
+	jmp ip {gpr: datareg} if {cnd: condreg}  => 0x30`8 @ {gpr} @ 0`1 @ {cnd}
+	jmp ip {gpr: datareg} if !{cnd: condreg} => 0x30`8 @ {gpr} @ 1`1 @ {cnd}
+	jmp ip {gpr: addrreg} if {cnd: condreg}  => 0x31`8 @ {gpr} @ 0`1 @ {cnd}
+	jmp ip {gpr: addrreg} if !{cnd: condreg} => 0x31`8 @ {gpr} @ 1`1 @ {cnd}
+}
+
+#ruledef half_gpr_imm {
+	add {gpr: datareg} {imm: u5} => {
+		assert(imm >= 1 && imm <= 16)
+		0x32`8 @ {gpr} @ (imm-1)`4
+	}
+	add {gpr: addrreg} {imm: u5} => {
+		assert(imm >= 1 && imm <= 16)
+		0x33`8 @ {gpr} @ (imm-1)`4
+	}
+	sub {gpr: datareg} {imm: u5} => {
+		assert(imm >= 1 && imm <= 16)
+		0x34`8 @ {gpr} @ (imm-1)`4
+	}
+	sub {gpr: addrreg} {imm: u5} => {
+		assert(imm >= 1 && imm <= 16)
+		0x35`8 @ {gpr} @ (imm-1)`4
+	}
+
+	bl {gpr: datareg} {imm: u5} => {
+		assert(imm >= 1 && imm <= 16)
+		0x36`8 @ {gpr} @ (imm-1)`4
+	}
+	bru {gpr: datareg} {imm: u5} => {
+		assert(imm >= 1 && imm <= 16)
+		0x37`8 @ {gpr} @ (imm-1)`4
+	}
+	brs {gpr: datareg} {imm: u5} => {
+		assert(imm >= 2 && imm <= 17)
+		0x38`8 @ {gpr} @ (imm-2)`4
+	}
 }
 
 #ruledef extras {
-	hlt => 0x00_00_00_00`8
+	hlt => 0x00_00`16
 }
 
 #ruledef pseudo {

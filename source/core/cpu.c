@@ -284,9 +284,37 @@ bool cpu_execute(cpu_t *cpu) {
 			if(tmpc1 != tmpc2) cpu->ip += cpu->addr[instr.hgc.tgt_r];
 			else cpu->ip += 2;
 			break;
-		case 0x32: case 0x33:
-		case 0x34: case 0x35: case 0x36: case 0x37:
-		case 0x38: case 0x39: case 0x3A: case 0x3B:
+		case 0x32: // ADDsx
+			cpu->data[instr.hgs.tgt_r] += instr.hgs.imm + 1;
+			cpu->ip += 2;
+			break;
+		case 0x33: // ADDsy
+			cpu->addr[instr.hgs.tgt_r] += instr.hgs.imm + 1;
+			cpu->ip += 2;
+			break;
+		case 0x34: // SUBsx
+			cpu->data[instr.hgs.tgt_r] -= instr.hgs.imm + 1;
+			cpu->ip += 2;
+			break;
+		case 0x35: // SUBsy
+			cpu->addr[instr.hgs.tgt_r] -= instr.hgs.imm + 1;
+			cpu->ip += 2;
+			break;
+		case 0x36: // BLs
+			cpu->data[instr.hgs.tgt_r] <<= instr.hgs.imm + 2;
+			cpu->ip += 2;
+			break;
+		case 0x37: // BRUs
+			cpu->data[instr.hgs.tgt_r] >>= instr.hgs.imm + 2;
+			cpu->ip += 2;
+			break;
+		case 0x38: // BRSs
+			tmpg1 = cpu->data[instr.hgs.tgt_r];
+			tmpg2 = (uint32_t)(((int32_t)tmpg1) >> (instr.hgs.imm + 2));
+			cpu->data[instr.hgs.tgt_r] = tmpg2;
+			cpu->ip += 2;
+			break;
+		case 0x39: case 0x3A: case 0x3B:
 		case 0x3C: case 0x3D: case 0x3E: case 0x3F:
 		case 0x40: case 0x41: case 0x42: case 0x43:
 		case 0x44: case 0x45: case 0x46: case 0x47:

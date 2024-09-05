@@ -41,6 +41,11 @@ typedef union instruction {
 				unsigned tgt_r : 4;
 				uint16_t _padding;
 			} hgs;
+			struct {
+				unsigned src_r : 4;
+				unsigned dst_r : 4;
+				uint16_t imm;
+			} wggi;
 		};
 	};
 } instruction_t;

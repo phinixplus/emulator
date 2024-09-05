@@ -183,6 +183,23 @@
 	}
 }
 
+#ruledef word_gpr_gpr_imm {
+	add {dst: datareg} {src: datareg} {imm: s16}  => 0x39 @ {dst} @ {src} @ le(imm)
+	add {dst: addrreg} {src: addrreg} {imm: s16}  => 0x3A @ {dst} @ {src} @ le(imm)
+	add {dst: datareg} {src: datareg} ^{imm: s16} => 0x3B @ {dst} @ {src} @ le(imm)
+	add {dst: addrreg} {src: addrreg} ^{imm: s16} => 0x3C @ {dst} @ {src} @ le(imm)
+
+	and {dst: datareg} {src: datareg} {imm: u16}  => 0x3D @ {dst} @ {src} @ le(imm)
+	and {dst: datareg} {src: datareg} ^{imm: u16} => 0x3E @ {dst} @ {src} @ le(imm)
+	ior {dst: datareg} {src: datareg} {imm: u16}  => 0x3F @ {dst} @ {src} @ le(imm)
+	ior {dst: datareg} {src: datareg} ^{imm: u16} => 0x40 @ {dst} @ {src} @ le(imm)
+	xor {dst: datareg} {src: datareg} {imm: u16}  => 0x41 @ {dst} @ {src} @ le(imm)
+	xor {dst: datareg} {src: datareg} ^{imm: u16} => 0x42 @ {dst} @ {src} @ le(imm)
+
+	inp {tgt: datareg} {addr: datareg} {imm: s16} => 0x43 @ {tgt} @ {addr} @ le(imm)
+	out {tgt: datareg} {addr: datareg} {imm: s16} => 0x44 @ {tgt} @ {addr} @ le(imm)
+}
+
 #ruledef extras {
 	hlt => 0x00_00`16
 }

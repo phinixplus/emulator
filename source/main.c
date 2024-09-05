@@ -14,9 +14,9 @@ int main(int argc, char **argv) {
 
 	assert(argc == 2);
 
-	mem_t memory = mem_new( argv[1]);
+	mem_t memory = mem_new(argv[1]);
 	cpu_t processor; cpu_reset(&processor, memory);
-	
+
 	uint64_t count = 0;
 	for(; cpu_execute(&processor); count++) {
 		char value[9] = {0};

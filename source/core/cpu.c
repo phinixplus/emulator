@@ -17,6 +17,7 @@ bool cpu_execute(cpu_t *cpu) {
 
 	bool tmpc1, tmpc2;
 	uint32_t tmpg1, tmpg2;
+	char hexbuf[9] = {0};
 	switch(instr.opcode) {
 		case 0x00: return false;
 		case 0x01: // MOVxx
@@ -314,10 +315,86 @@ bool cpu_execute(cpu_t *cpu) {
 			cpu->data[instr.hgs.tgt_r] = tmpg2;
 			cpu->ip += 2;
 			break;
-		case 0x39: case 0x3A: case 0x3B:
-		case 0x3C: case 0x3D: case 0x3E: case 0x3F:
-		case 0x40: case 0x41: case 0x42: case 0x43:
-		case 0x44: case 0x45: case 0x46: case 0x47:
+		case 0x39: // ADDlx
+			tmpg1 = (uint32_t)instr.wggi.imm;
+			tmpg1 += cpu->data[instr.wggi.src_r];
+			cpu->data[instr.wggi.dst_r] = tmpg1;
+			cpu->ip += 4;
+			break;
+		case 0x3A: // ADDly
+			tmpg1 = (uint32_t)instr.wggi.imm;
+			tmpg1 += cpu->data[instr.wggi.src_r];
+			cpu->addr[instr.wggi.dst_r] = tmpg1;
+			cpu->ip += 4;
+			break;
+		case 0x3B: // ADDhx
+			tmpg1 = ((uint32_t)instr.wggi.imm) << 16;
+			tmpg1 += cpu->data[instr.wggi.src_r];
+			cpu->data[instr.wggi.dst_r] = tmpg1;
+			cpu->ip += 4;
+			break;
+		case 0x3C: // ADDhy
+			tmpg1 = ((uint32_t)instr.wggi.imm) << 16;
+			tmpg1 += cpu->addr[instr.wggi.src_r];
+			cpu->addr[instr.wggi.dst_r] = tmpg1;
+			cpu->ip += 4;
+			break;
+		case 0x3D: // ANDl
+			tmpg1 = (uint32_t)instr.wggi.imm;
+			tmpg1 &= cpu->data[instr.wggi.src_r];
+			cpu->data[instr.wggi.dst_r] = tmpg1;
+			cpu->ip += 4;
+			break;
+		case 0x3E: // ANDh
+			tmpg1 = (((uint32_t)instr.wggi.imm) << 16) | 0xFFFF;
+			tmpg1 &= cpu->data[instr.wggi.src_r];
+			cpu->data[instr.wggi.dst_r] = tmpg1;
+			cpu->ip += 4;
+			break;
+		case 0x3F: // IORl
+			tmpg1 = (uint32_t)instr.wggi.imm;
+			tmpg1 |= cpu->data[instr.wggi.src_r];
+			cpu->data[instr.wggi.dst_r] = tmpg1;
+			cpu->ip += 4;
+			break;
+		case 0x40: // IORh
+			tmpg1 = ((uint32_t)instr.wggi.imm) << 16;
+			tmpg1 |= cpu->data[instr.wggi.src_r];
+			cpu->data[instr.wggi.dst_r] = tmpg1;
+			cpu->ip += 4;
+			break;
+		case 0x41: // XORl
+			tmpg1 = (uint32_t)instr.wggi.imm;
+			tmpg1 ^= cpu->data[instr.wggi.src_r];
+			cpu->data[instr.wggi.dst_r] = tmpg1;
+			cpu->ip += 4;
+			break;
+		case 0x42: // XORh
+			tmpg1 = ((uint32_t)instr.wggi.imm) << 16;
+			tmpg1 ^= cpu->data[instr.wggi.src_r];
+			cpu->data[instr.wggi.dst_r] = tmpg1;
+			cpu->ip += 4;
+			break;
+		case 0x43: // INP
+			tmpg1 = (uint32_t)instr.wggi.imm;
+			tmpg1 += cpu->data[instr.wggi.src_r];
+			tmpg1 &= 0xFFFF;
+			hex_string_of_length(hexbuf, tmpg1, 4);
+			printf("IO Read: 00000000 from %4s\n", hexbuf);
+			cpu->data[instr.wggi.dst_r] = 0;
+			cpu->ip += 4;
+			break;
+		case 0x44: // OUT
+			tmpg1 = (uint32_t)instr.wggi.imm;
+			tmpg1 += cpu->data[instr.wggi.src_r];
+			tmpg1 &= 0xFFFF;
+			hex_string_of_length(hexbuf, cpu->data[instr.wggi.dst_r], 8);
+			printf("IO Write: %8s ", hexbuf);
+			hex_string_of_length(hexbuf, tmpg1, 4);
+			printf("to %4s\n", hexbuf);
+			cpu->ip += 4;
+			break;
+		case 0x45: case 0x46: case 0x47:
 		case 0x48: case 0x49: case 0x4A: case 0x4B:
 		case 0x4C: case 0x4D: case 0x4E: case 0x4F:
 		case 0x50: case 0x51: case 0x52: case 0x53:
@@ -364,11 +441,10 @@ bool cpu_execute(cpu_t *cpu) {
 		case 0xF4: case 0xF5: case 0xF6: case 0xF7:
 		case 0xF8: case 0xF9: case 0xFA: case 0xFB:
 		case 0xFC: case 0xFD: case 0xFE: case 0xFF:;
-			char value[9] = {0};
-			hex_string_of_length(value, cpu->ip, 8);
+			hex_string_of_length(hexbuf, cpu->ip, 8);
 			fprintf(stderr,
 				"Encountered invalid opcode 0x%x at 0x%8s.\n",
-				instr.opcode, value
+				instr.opcode, hexbuf
 			);
 			return false;
 	}

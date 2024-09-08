@@ -169,7 +169,7 @@
 		0x35`8 @ {gpr} @ (imm-1)`4
 	}
 
-	bl {gpr: datareg} {imm: u5} => {
+	bl  {gpr: datareg} {imm: u5} => {
 		assert(imm >= 1 && imm <= 16)
 		0x36`8 @ {gpr} @ (imm-1)`4
 	}
@@ -209,6 +209,28 @@
 	jmp {gpr: addrreg} => asm { jmp {gpr} if !c0}
 	jmp ip {gpr: datareg} => asm { jmp ip {gpr} if !c0}
 	jmp ip {gpr: addrreg} => asm { jmp ip {gpr} if !c0}
+
+	add {tgt: datareg} {imm: s16}  => asm { add {tgt} {tgt} {imm} }
+	add {tgt: addrreg} {imm: s16}  => asm { add {tgt} {tgt} {imm} }
+	add {tgt: datareg} ^{imm: s16} => asm { add {tgt} {tgt} ^{imm} }
+	add {tgt: addrreg} ^{imm: s16} => asm { add {tgt} {tgt} ^{imm} }
+
+	and {tgt: datareg} {imm: u16}  => asm { and {tgt} {tgt} {imm} }
+	and {tgt: datareg} ^{imm: u16} => asm { and {tgt} {tgt} ^{imm} }
+	ior {tgt: datareg} {imm: u16}  => asm { ior {tgt} {tgt} {imm} }
+	ior {tgt: datareg} ^{imm: u16} => asm { ior {tgt} {tgt} ^{imm} }
+	xor {tgt: datareg} {imm: u16}  => asm { xor {tgt} {tgt} {imm} }
+	xor {tgt: datareg} ^{imm: u16} => asm { xor {tgt} {tgt} ^{imm} }
+
+	inp {tgt: datareg} {imm: s16} => asm { inp {tgt} x0 {imm} }
+	out {tgt: datareg} {imm: s16} => asm { out {tgt} x0 {imm} }
+}
+
+#ruledef macro {
+	li  {dst: datareg} {imm: i32} => asm {
+		ior {dst} x0 {imm}[15:0]
+		ior {dst} ^{imm}[31:16]
+	}
 }
 
 #bankdef main {

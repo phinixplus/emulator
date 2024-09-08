@@ -13,28 +13,28 @@
 			"label": "Clean",
 			"type": "shell",
 			"command": "bash",
-			"args": [ "${workspaceFolder}/build.sh", "clean" ],
+			"args": [ "-l", "${workspaceFolder}/build.sh", "clean" ],
 			"group": { "kind": "build" },
 			"presentation": { "reveal": "never" }
 		}, {
 			"label": "Assemble",
 			"type": "shell",
 			"command": "bash",
-			"args": [ "${workspaceFolder}/build.sh", "assemble", "${input:asm-src}" ],
+			"args": [ "-l", "${workspaceFolder}/build.sh", "assemble", "${input:asm-src}" ],
 			"group": { "kind": "build" },
 			"presentation": { "reveal": "always" }
 		}, {
 			"label": "Build (Debug)",
 			"type": "shell",
 			"command": "bash",
-			"args": [ "${workspaceFolder}/build.sh", "build", "debug" ],
+			"args": [ "-l", "${workspaceFolder}/build.sh", "build", "debug" ],
 			"group": { "kind": "build" },
 			"presentation": { "reveal": "always" }
 		}, {
 			"label": "Build (Release)",
 			"type": "shell",
 			"command": "bash",
-			"args": [ "${workspaceFolder}/build.sh", "build", "release" ],
+			"args": [ "-l", "${workspaceFolder}/build.sh", "build", "release" ],
 			"group": { "kind": "build" },
 			"presentation": { "reveal": "always" }
 		}, {

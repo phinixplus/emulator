@@ -6,32 +6,36 @@
 #include "util.h"
 #include "core/cpu.h"
 #include "core/mem.h"
+#include "core/io.h"
+
+void dbgcon_callback(bool write, uint32_t *value) {
+	assert(write);
+	printf("%d\n", *value);
+}
 
 int main(int argc, char **argv) {
-	// Make sure the memory sizes and instructions unions are packed correctly
-	assert(sizeof(mem_datum_t) == sizeof(uint32_t));
-	assert(sizeof(instruction_t) == sizeof(uint32_t));
-
 	assert(argc == 2);
 
-	mem_t memory = mem_new(argv[1]);
-	cpu_t processor; cpu_reset(&processor, memory);
+	mem_t mem = mem_new(argv[1]);
+	io_t io = io_new();
+	assert(io_register_write(io, 0, dbgcon_callback) == NULL);
+	cpu_t cpu; cpu_reset(&cpu, mem, io);
 
 	uint64_t count = 0;
-	for(; cpu_execute(&processor); count++) {
+	for(; cpu_execute(&cpu); count++) {
 		char value[9] = {0};
 		printf("---- Step: %lu ----\n", count + 1);
-		hex_string_of_length(value, processor.ip, 8);
+		hex_string_of_length(value, cpu.ip, 8);
 		printf("ip: %8s ", value);
-		hex_string_of_length(value, processor.cond, 2);
+		hex_string_of_length(value, cpu.cond, 2);
 		printf("c*: %2s\n", value);
 		for(int i = 0; i < 16; i++) {
-			hex_string_of_length(value, processor.data[i], 8);
+			hex_string_of_length(value, cpu.data[i], 8);
 			printf("x%x: %8s", i, value);
 			putchar((i & 3) == 3 ? '\n' : ' ');
 		}
 		for(int i = 0; i < 16; i++) {
-			hex_string_of_length(value, processor.addr[i], 8);
+			hex_string_of_length(value, cpu.addr[i], 8);
 			printf("y%x: %8s", i, value);
 			putchar((i & 3) == 3 ? '\n' : ' ');
 		}

@@ -4,7 +4,6 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 
 typedef struct io_registry {
 	io_callback_t read_callbacks[(1 << IO_ADDR_BITS)];

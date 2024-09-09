@@ -28,7 +28,7 @@ function build {
 	build_rec $srcdir
 	binfiles=$(find $bindir -maxdepth 1 -mindepth 1 -type f -name "*.o")
 	binfiles=$(echo "$binfiles" | tr '\n' ' ')
-	echo "Executable: $binfiles -> $bindir/$outfile"
+	echo "Executable: $binfiles-> $bindir/$outfile"
 	gcc $GCC_ARGS -o "$bindir/$outfile" $binfiles
 }
 
@@ -54,7 +54,7 @@ function build_rec {
 		this_bindir=$(echo "$this_srcdir" | sed -e "s/$srcdir/$bindir/")
 		binfiles=$(find $this_bindir -maxdepth 1 -mindepth 1 -type f -name "*.o")
 		binfiles=$(echo "$binfiles" | tr '\n' ' ')
-		echo "Merging: $binfiles -> ${this_bindir}_dir.o"
+		echo "Merging: $binfiles-> ${this_bindir}_dir.o"
 		ld --relocatable -o "${this_bindir}_dir.o" $binfiles
 	done
 }

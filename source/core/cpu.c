@@ -2,17 +2,53 @@
 
 #include "util.h"
 
+#include <assert.h>
 #include <stdbool.h>
 #include <stdio.h>
 
-void cpu_reset(cpu_t *cpu, mem_t memory) {
+#pragma pack(push, 1)
+typedef union instruction {
+	uint32_t instr_word;
+	struct {
+		// First byte of the instruction
+		uint8_t opcode;
+		union {
+			struct {
+				unsigned src_r : 4;
+				unsigned dst_r : 4;
+				uint16_t _padding;
+			} hgg;
+			struct {
+				unsigned tgt_c : 3;
+				unsigned neg : 1;
+				unsigned tgt_r : 4;
+				uint16_t _padding;
+			} hgc;
+			struct {
+				unsigned imm : 4;
+				unsigned tgt_r : 4;
+				uint16_t _padding;
+			} hgs;
+			struct {
+				unsigned src_r : 4;
+				unsigned dst_r : 4;
+				uint16_t imm;
+			} wggi;
+		};
+	};
+} instruction_t;
+#pragma pack(pop)
+
+void cpu_reset(cpu_t *cpu, mem_t mem, io_t io) {
+	assert(sizeof(instruction_t) == sizeof(uint32_t));
 	cpu->ip = 0;
 	cpu->cond &= ~1;
-	if(memory != NULL) cpu->memory = memory;
+	if(mem != NULL) cpu->mem = mem;
+	if(io != NULL) cpu->io = io;
 }
 
 bool cpu_execute(cpu_t *cpu) {
-	uint32_t inst_word = mem_fetch_word(cpu->memory, cpu->ip);
+	uint32_t inst_word = mem_fetch_word(cpu->mem, cpu->ip);
 	instruction_t instr = {inst_word};
 
 	bool tmpc1, tmpc2;
@@ -102,30 +138,30 @@ bool cpu_execute(cpu_t *cpu) {
 			cpu->ip += 2;
 			break;
 		case 0x14: // LBUrx
-			tmpg1 = mem_fetch_byte(cpu->memory, cpu->data[instr.hgg.src_r]);
+			tmpg1 = mem_fetch_byte(cpu->mem, cpu->data[instr.hgg.src_r]);
 			cpu->data[instr.hgg.dst_r] = tmpg1;
 			cpu->ip += 2;
 			break;
 		case 0x15: // LBUry
-			tmpg1 = mem_fetch_byte(cpu->memory, cpu->addr[instr.hgg.src_r]);
+			tmpg1 = mem_fetch_byte(cpu->mem, cpu->addr[instr.hgg.src_r]);
 			cpu->data[instr.hgg.dst_r] = tmpg1;
 			cpu->ip += 2;
 			break;
 		case 0x16: // LBSrx
-			tmpg1 = mem_fetch_byte(cpu->memory, cpu->data[instr.hgg.src_r]);
+			tmpg1 = mem_fetch_byte(cpu->mem, cpu->data[instr.hgg.src_r]);
 			tmpg1 |= (tmpg1 & 1 << 7) ? 0xFFFFFF00 : 0;
 			cpu->data[instr.hgg.dst_r] = tmpg1;
 			cpu->ip += 2;
 			break;
 		case 0x17: // LBSry
-			tmpg1 = mem_fetch_byte(cpu->memory, cpu->addr[instr.hgg.src_r]);
+			tmpg1 = mem_fetch_byte(cpu->mem, cpu->addr[instr.hgg.src_r]);
 			tmpg1 |= (tmpg1 & 1 << 7) ? 0xFFFFFF00 : 0;
 			cpu->data[instr.hgg.dst_r] = tmpg1;
 			cpu->ip += 2;
 			break;
 		case 0x18: // SBrx
 			mem_store_byte(
-				cpu->memory,
+				cpu->mem,
 				cpu->data[instr.hgg.src_r],
 				(uint8_t)(cpu->data[instr.hgg.dst_r] & 0x000000FF)
 			);
@@ -133,37 +169,37 @@ bool cpu_execute(cpu_t *cpu) {
 			break;
 		case 0x19: // SBry
 			mem_store_byte(
-				cpu->memory,
+				cpu->mem,
 				cpu->addr[instr.hgg.src_r],
 				(uint8_t)(cpu->data[instr.hgg.dst_r] & 0x000000FF)
 			);
 			cpu->ip += 2;
 			break;
 		case 0x1A: // LHUrx
-			tmpg1 = mem_fetch_half(cpu->memory, cpu->data[instr.hgg.src_r]);
+			tmpg1 = mem_fetch_half(cpu->mem, cpu->data[instr.hgg.src_r]);
 			cpu->data[instr.hgg.dst_r] = tmpg1;
 			cpu->ip += 2;
 			break;
 		case 0x1B: // LHUry
-			tmpg1 = mem_fetch_half(cpu->memory, cpu->addr[instr.hgg.src_r]);
+			tmpg1 = mem_fetch_half(cpu->mem, cpu->addr[instr.hgg.src_r]);
 			cpu->data[instr.hgg.dst_r] = tmpg1;
 			cpu->ip += 2;
 			break;
 		case 0x1C: // LHSrx
-			tmpg1 = mem_fetch_half(cpu->memory, cpu->data[instr.hgg.src_r]);
+			tmpg1 = mem_fetch_half(cpu->mem, cpu->data[instr.hgg.src_r]);
 			tmpg1 |= (tmpg1 & 1 << 7) ? 0xFFFFFF00 : 0;
 			cpu->data[instr.hgg.dst_r] = tmpg1;
 			cpu->ip += 2;
 			break;
 		case 0x1D: // LHSry
-			tmpg1 = mem_fetch_half(cpu->memory, cpu->addr[instr.hgg.src_r]);
+			tmpg1 = mem_fetch_half(cpu->mem, cpu->addr[instr.hgg.src_r]);
 			tmpg1 |= (tmpg1 & 1 << 7) ? 0xFFFFFF00 : 0;
 			cpu->data[instr.hgg.dst_r] = tmpg1;
 			cpu->ip += 2;
 			break;
 		case 0x1E: // SHrx
 			mem_store_half(
-				cpu->memory,
+				cpu->mem,
 				cpu->data[instr.hgg.src_r],
 				(uint16_t)(cpu->data[instr.hgg.dst_r] & 0x0000FFFF)
 			);
@@ -171,25 +207,25 @@ bool cpu_execute(cpu_t *cpu) {
 			break;
 		case 0x1F: // SHry
 			mem_store_half(
-				cpu->memory,
+				cpu->mem,
 				cpu->addr[instr.hgg.src_r],
 				(uint16_t)(cpu->data[instr.hgg.dst_r] & 0x0000FFFF)
 			);
 			cpu->ip += 2;
 			break;
 		case 0x20: // LWrx
-			tmpg1 = mem_fetch_word(cpu->memory, cpu->data[instr.hgg.src_r]);
+			tmpg1 = mem_fetch_word(cpu->mem, cpu->data[instr.hgg.src_r]);
 			cpu->data[instr.hgg.dst_r] = tmpg1;
 			cpu->ip += 2;
 			break;
 		case 0x21: // LWry
-			tmpg1 = mem_fetch_word(cpu->memory, cpu->addr[instr.hgg.src_r]);
+			tmpg1 = mem_fetch_word(cpu->mem, cpu->addr[instr.hgg.src_r]);
 			cpu->data[instr.hgg.dst_r] = tmpg1;
 			cpu->ip += 2;
 			break;
 		case 0x22: // SWrx
 			mem_store_word(
-				cpu->memory,
+				cpu->mem,
 				cpu->data[instr.hgg.src_r],
 				cpu->data[instr.hgg.dst_r]
 			);
@@ -197,7 +233,7 @@ bool cpu_execute(cpu_t *cpu) {
 			break;
 		case 0x23: // SWry
 			mem_store_word(
-				cpu->memory,
+				cpu->mem,
 				cpu->addr[instr.hgg.src_r],
 				cpu->data[instr.hgg.dst_r]
 			);
@@ -378,20 +414,15 @@ bool cpu_execute(cpu_t *cpu) {
 		case 0x43: // INP
 			tmpg1 = (uint32_t)instr.wggi.imm;
 			tmpg1 += cpu->data[instr.wggi.src_r];
-			tmpg1 &= 0xFFFF;
-			hex_string_of_length(hexbuf, tmpg1, 4);
-			printf("IO Read: 00000000 from %4s\n", hexbuf);
-			cpu->data[instr.wggi.dst_r] = 0;
+			tmpg1 &= (1 << IO_ADDR_BITS) - 1;
+			cpu->data[instr.wggi.dst_r] = io_read(cpu->io, tmpg1);
 			cpu->ip += 4;
 			break;
 		case 0x44: // OUT
 			tmpg1 = (uint32_t)instr.wggi.imm;
 			tmpg1 += cpu->data[instr.wggi.src_r];
-			tmpg1 &= 0xFFFF;
-			hex_string_of_length(hexbuf, cpu->data[instr.wggi.dst_r], 8);
-			printf("IO Write: %8s ", hexbuf);
-			hex_string_of_length(hexbuf, tmpg1, 4);
-			printf("to %4s\n", hexbuf);
+			tmpg1 &= (1 << IO_ADDR_BITS) - 1;
+			io_write(cpu->io, tmpg1, cpu->data[instr.wggi.dst_r]);
 			cpu->ip += 4;
 			break;
 		case 0x45: case 0x46: case 0x47:

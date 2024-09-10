@@ -19,24 +19,28 @@ void io_free(io_t io) {
 	free(io);
 }
 
-io_callback_t io_register_read(
-	io_t io, uint16_t port,
-	io_callback_t callback
-) {
+bool io_attach_read(io_t io, uint16_t port, io_callback_t callback) {
 	io_callback_t *spot = &io->read_callbacks[port];
-	io_callback_t old = *spot;
-	*spot = callback;
-	return old;
+	if(*spot != NULL) return false;
+	return *spot = callback, true;
 }
 
-io_callback_t io_register_write(
-	io_t io, uint16_t port,
-	io_callback_t callback
-) {
+bool io_detach_read(io_t io, uint16_t port, io_callback_t *ret_callback) {
+	io_callback_t *spot = &io->read_callbacks[port];
+	if(*spot == NULL) return false;
+	return *ret_callback = *spot, *spot = NULL, true;
+}
+
+bool io_attach_write(io_t io, uint16_t port, io_callback_t callback) {
 	io_callback_t *spot = &io->write_callbacks[port];
-	io_callback_t old = *spot;
-	*spot = callback;
-	return old;
+	if(*spot != NULL) return false;
+	return *spot = callback, true;
+}
+
+bool io_detach_write(io_t io, uint16_t port, io_callback_t *ret_callback) {
+	io_callback_t *spot = &io->write_callbacks[port];
+	if(*spot == NULL) return false;
+	return *ret_callback = *spot, *spot = NULL, true;
 }
 
 uint32_t io_read(io_t io, uint16_t port) {

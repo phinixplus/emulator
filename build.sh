@@ -4,6 +4,8 @@ bindir='build'
 srcdir='source'
 incldir='include'
 outfile='pplusemu'
+gccargs='-Wall -Wextra -pedantic --std=c11'
+gcclibs=''
 
 function error {
 	echo "This build option requires $1."
@@ -22,14 +24,14 @@ function build {
 	ld --version >/dev/null || error "ld"
 
 	case $1 in
-		"release") GCC_ARGS="-Wall -Wextra -Werror -pedantic --std=c11 -O2" ;;
-		"debug") GCC_ARGS="-Wall -Wextra -pedantic --std=c11 -g" ;;
+		"release") gccargs="$gccargs -Werror -O2" ;;
+		"debug") gccargs="$gccargs -g" ;;
 	esac
 	build_rec $srcdir
 	binfiles=$(find $bindir -maxdepth 1 -mindepth 1 -type f -name "*.o")
 	binfiles=$(echo "$binfiles" | tr '\n' ' ')
 	echo "Executable: $binfiles-> $bindir/$outfile"
-	gcc $GCC_ARGS -o "$bindir/$outfile" $binfiles
+	gcc $gccargs -o "$bindir/$outfile" $binfiles $gcclibs
 }
 
 function build_rec {
@@ -44,7 +46,7 @@ function build_rec {
 		
 		mkdir -p "$this_bindir"
 		echo "Building: $this_srcfile -> $this_binfile"
-		gcc $GCC_ARGS -c -o "$this_binfile" $this_srcfile -I"$incldir" -I"$this_incldir"
+		gcc $gccargs -c -o "$this_binfile" $this_srcfile -I"$incldir" -I"$this_incldir"
 	done
 
 	# Recurse for all subdirectories and then merge generated object files

@@ -28,7 +28,11 @@ typedef union instruction {
 				unsigned imm : 4;
 				unsigned tgt_r : 4;
 				uint16_t _padding;
-			} hgs;
+			} hgi;
+			struct {
+				uint8_t imm;
+				uint16_t _padding;
+			} hi;
 			struct {
 				unsigned src_r : 4;
 				unsigned dst_r : 4;
@@ -55,7 +59,9 @@ bool cpu_execute(cpu_t *cpu) {
 	uint32_t tmpg1, tmpg2;
 	char hexbuf[9] = {0};
 	switch(instr.opcode) {
-		case 0x00: return false;
+		case 0x00: // PAD, HLT
+			if(instr.hi.imm == 0xFF) return cpu->ip += 2, cpu_execute(cpu);
+			else return false;
 		case 0x01: // MOVxx
 			cpu->data[instr.hgg.dst_r] = cpu->data[instr.hgg.src_r];
 			cpu->ip += 2;
@@ -322,33 +328,33 @@ bool cpu_execute(cpu_t *cpu) {
 			else cpu->ip += 2;
 			break;
 		case 0x32: // ADDsx
-			cpu->data[instr.hgs.tgt_r] += instr.hgs.imm + 1;
+			cpu->data[instr.hgi.tgt_r] += instr.hgi.imm + 1;
 			cpu->ip += 2;
 			break;
 		case 0x33: // ADDsy
-			cpu->addr[instr.hgs.tgt_r] += instr.hgs.imm + 1;
+			cpu->addr[instr.hgi.tgt_r] += instr.hgi.imm + 1;
 			cpu->ip += 2;
 			break;
 		case 0x34: // SUBsx
-			cpu->data[instr.hgs.tgt_r] -= instr.hgs.imm + 1;
+			cpu->data[instr.hgi.tgt_r] -= instr.hgi.imm + 1;
 			cpu->ip += 2;
 			break;
 		case 0x35: // SUBsy
-			cpu->addr[instr.hgs.tgt_r] -= instr.hgs.imm + 1;
+			cpu->addr[instr.hgi.tgt_r] -= instr.hgi.imm + 1;
 			cpu->ip += 2;
 			break;
 		case 0x36: // BLs
-			cpu->data[instr.hgs.tgt_r] <<= instr.hgs.imm + 2;
+			cpu->data[instr.hgi.tgt_r] <<= instr.hgi.imm + 2;
 			cpu->ip += 2;
 			break;
 		case 0x37: // BRUs
-			cpu->data[instr.hgs.tgt_r] >>= instr.hgs.imm + 2;
+			cpu->data[instr.hgi.tgt_r] >>= instr.hgi.imm + 2;
 			cpu->ip += 2;
 			break;
 		case 0x38: // BRSs
-			tmpg1 = cpu->data[instr.hgs.tgt_r];
-			tmpg2 = (uint32_t)(((int32_t)tmpg1) >> (instr.hgs.imm + 2));
-			cpu->data[instr.hgs.tgt_r] = tmpg2;
+			tmpg1 = cpu->data[instr.hgi.tgt_r];
+			tmpg2 = (uint32_t)(((int32_t)tmpg1) >> (instr.hgi.imm + 2));
+			cpu->data[instr.hgi.tgt_r] = tmpg2;
 			cpu->ip += 2;
 			break;
 		case 0x39: // ADDlx

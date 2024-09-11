@@ -3,9 +3,9 @@
 #include <assert.h>
 #include <stdio.h>
 
-void dbgcon_callback(bool write, uint32_t *value) {
-	assert(write);
-	printf("%d\n", *value);
+void dbgcon_callback(bool rw_select, uint32_t *data) {
+	assert(rw_select);
+	printf("%d\n", *data);
 }
 
 bool dbgcon_init(io_t io) {

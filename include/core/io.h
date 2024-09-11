@@ -6,7 +6,7 @@
 
 #define IO_ADDR_BITS 8
 
-typedef void (*io_callback_t)(bool write, uint32_t *value);
+typedef void (*io_callback_t)(bool rw_select, uint32_t *data);
 typedef struct io_registry *io_t;
 
 io_t io_new(void);

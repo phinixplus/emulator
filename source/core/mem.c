@@ -39,14 +39,16 @@ static bool read_byte(FILE *file, uint8_t *dst) {
 mem_t mem_new(const char *fname) {
 	// Make sure the datums union is packed correctly.
 	assert(sizeof(mem_datum_t) == sizeof(uint32_t));
+
 	mem_t mem = (mem_t) calloc(MEM_SIZE_KIB, 1024);
 	if(fname == NULL) return mem;
 
 	char buffer[8] = {0};
 	FILE *file = fopen(fname, "r");
-	if(fname == NULL) return mem_free(mem), NULL;
+	if(file == NULL) return mem_free(mem), NULL;
 
-	fread(buffer, 8, sizeof(char), file);
+	size_t ret = fread(buffer, sizeof(char), 8, file);
+	if(ret != 8) return mem_free(mem), NULL;
 	if(strncmp(buffer, "v2.0 raw", 8) != 0)
 		return fclose(file), mem_free(mem), NULL;
 

@@ -49,7 +49,7 @@ uint32_t io_read(io_t io, uint16_t port) {
 	if(callback == NULL) {
 		char hexbuf[9] = {0};
 		hex_string_of_length(hexbuf, port, (IO_ADDR_BITS - 1) / 4 + 1);
-		fprintf(stderr, "Attempt to read from unassigned port %s\n", hexbuf);
+		fprintf(stderr, "Attempt to read from unassigned port %sh\n", hexbuf);
 		return 0;
 	}
 	callback(false, &value);
@@ -61,7 +61,7 @@ void io_write(io_t io, uint16_t port, uint32_t value) {
 	if(callback == NULL) {
 		char hexbuf[9] = {0};
 		hex_string_of_length(hexbuf, port, (IO_ADDR_BITS - 1) / 4 + 1);
-		fprintf(stderr, "Attempt to write to unassigned port %s\n", hexbuf);
+		fprintf(stderr, "Attempt to write to unassigned port %sh\n", hexbuf);
 		return;
 	}
 	callback(true, &value);

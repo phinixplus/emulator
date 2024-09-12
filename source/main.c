@@ -1,4 +1,5 @@
 #include <assert.h>
+#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -8,6 +9,7 @@
 #include "core/io.h"
 
 #include "io/dbgcon.h"
+#include "io/telnet.h"
 
 int main(int argc, char **argv) {
 	if(argc != 2) {
@@ -15,9 +17,12 @@ int main(int argc, char **argv) {
 		exit(EXIT_FAILURE);
 	}
 
+	signal(SIGPIPE, SIG_IGN);
+
 	// Setup IO
 	io_t io = io_new();
-	dbgcon_init(io);
+	assert(dbgcon_init(io));
+	assert(telnet_init(io, 2323));
 
 	// Setup Memory and CPU
 	mem_t mem = mem_new(argv[1]);
@@ -27,5 +32,6 @@ int main(int argc, char **argv) {
 	for(; print_cpu_state(count, &cpu), cpu_execute(&cpu); count++);
 	fprintf(stderr, "CPU halted after %lu step(s).\n", count);
 
+	telnet_cleanup();
 	exit(EXIT_SUCCESS);
 }

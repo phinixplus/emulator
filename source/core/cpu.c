@@ -10,7 +10,6 @@
 typedef union instruction {
 	uint32_t instr_word;
 	struct {
-		// First byte of the instruction
 		uint8_t opcode;
 		union {
 			struct {
@@ -44,7 +43,9 @@ typedef union instruction {
 #pragma pack(pop)
 
 void cpu_reset(cpu_t *cpu, mem_t mem, io_t io) {
+	// Make sure the instruction formats union is packed correctly.
 	assert(sizeof(instruction_t) == sizeof(uint32_t));
+
 	cpu->ip = 0;
 	cpu->cond &= ~1;
 	if(mem != NULL) cpu->mem = mem;
@@ -477,10 +478,10 @@ bool cpu_execute(cpu_t *cpu) {
 		case 0xF0: case 0xF1: case 0xF2: case 0xF3:
 		case 0xF4: case 0xF5: case 0xF6: case 0xF7:
 		case 0xF8: case 0xF9: case 0xFA: case 0xFB:
-		case 0xFC: case 0xFD: case 0xFE: case 0xFF:;
+		case 0xFC: case 0xFD: case 0xFE: case 0xFF:
 			hex_string_of_length(hexbuf, cpu->ip, 8);
 			fprintf(stderr,
-				"Encountered invalid opcode 0x%x at 0x%8s.\n",
+				"Encountered invalid opcode %xh at %8sh.\n",
 				instr.opcode, hexbuf
 			);
 			return false;

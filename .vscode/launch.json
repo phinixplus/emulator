@@ -8,7 +8,7 @@
 			"preLaunchTask": "Launch",
 			"program": "${workspaceRoot}/build/pplusemu",
 			"cwd": "${workspaceRoot}/build/",
-			"args": [ "mem.hex" ]
+			"args": [ "-v", "mem.hex" ]
 		}
 	]
 }

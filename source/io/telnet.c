@@ -29,6 +29,7 @@ static void telnet_callback(bool rw_select, uint32_t *data) {
 		ssize_t ret, req;
 		character = *data & 0xFF;
 		if(character == 0xFF) ret = write(state.client_socket, "\xff\xff", req = 2);
+		else if(character == '\r') ret = write(state.client_socket, "\r\0", req = 2);
 		else ret = write(state.client_socket, &character, req = 1);
 		if(ret != req) telnet_cleanup();
 		return;

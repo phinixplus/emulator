@@ -5,7 +5,7 @@ srcdir='source'
 incldir='include'
 outfile='pplusemu'
 gccargs='-Wall -Wextra -pedantic --std=c11'
-gcclibs=''
+gcclibs='-lpthread'
 
 function error {
 	echo "This build option requires $1."

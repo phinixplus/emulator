@@ -4,7 +4,7 @@ bindir='build'
 srcdir='source'
 incldir='include'
 outfile='pplusemu'
-gccargs='-Wall -Wextra -pedantic --std=c11'
+gccargs='-Wall -Wextra -pedantic -std=c11 -D_POSIX_C_SOURCE=200809L'
 gcclibs='-lpthread'
 
 function error {

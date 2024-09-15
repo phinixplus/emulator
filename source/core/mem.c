@@ -45,12 +45,12 @@ mem_t mem_new(const char *fname) {
 
 	char buffer[8] = {0};
 	FILE *file = fopen(fname, "r");
-	if(file == NULL) return mem_free(mem), NULL;
+	if(file == NULL) return mem_del(mem), NULL;
 
 	size_t ret = fread(buffer, sizeof(char), 8, file);
-	if(ret != 8) return mem_free(mem), NULL;
+	if(ret != 8) return mem_del(mem), NULL;
 	if(strncmp(buffer, "v2.0 raw", 8) != 0)
-		return fclose(file), mem_free(mem), NULL;
+		return fclose(file), mem_del(mem), NULL;
 
 	for(uint32_t i = 0; read_byte(file, &mem[i>>2].bytes[i&3]); i++);
 
@@ -58,7 +58,7 @@ mem_t mem_new(const char *fname) {
 	return mem;
 }
 
-void mem_free(mem_t mem) {
+void mem_del(mem_t mem) {
 	free(mem);
 }
 

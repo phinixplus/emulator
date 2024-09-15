@@ -8,7 +8,7 @@
 typedef union mem_datum *mem_t;
 
 mem_t mem_new(const char *fname);
-void mem_free(mem_t memory);
+void mem_del(mem_t memory);
 
 uint8_t mem_fetch_byte(mem_t memory, uint32_t address);
 uint16_t mem_fetch_half(mem_t memory, uint32_t address);

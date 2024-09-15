@@ -4,6 +4,7 @@
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 
 #include "util.h"
@@ -30,9 +31,6 @@ void *freq_counter_thread(void *data) {
 	}
 }
 
-// A function you want is hidden behind some stupid macro??
-// Just declare it exists yourself!! What could possibly go wrong?!
-extern char *strsignal(int __sig) __THROW;
 void exit_as_sighandler(int sigid) { 
 	fprintf(stderr, "Caught signal: %s\n", strsignal(sigid));
 	exit(EXIT_FAILURE);
@@ -71,10 +69,10 @@ int main(int argc, char **argv) {
 
 	// Start frequency counter
 	uint64_t count = 0;
+	pthread_t freq_counter;
 	if(!options.verbose) {
-		pthread_t dummy;
 		pthread_create(
-			&dummy, NULL,
+			&freq_counter, NULL,
 			freq_counter_thread,
 			&count
 		);
@@ -85,5 +83,11 @@ int main(int argc, char **argv) {
 	while(count++, cpu_execute(&cpu));
 	fprintf(stderr, "CPU halted after %lu step(s).\n", count);
 
+	io_del(io);
+	mem_del(mem);
+	if(!options.verbose) {
+		pthread_cancel(freq_counter);
+		pthread_join(freq_counter, NULL);
+	}
 	exit(EXIT_SUCCESS);
 }

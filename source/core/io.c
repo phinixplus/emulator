@@ -15,7 +15,7 @@ io_t io_new(void) {
 	return io;
 }
 
-void io_free(io_t io) {
+void io_del(io_t io) {
 	free(io);
 }
 

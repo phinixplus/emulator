@@ -10,7 +10,7 @@ typedef void (*io_callback_t)(bool rw_select, uint32_t *data);
 typedef struct io_registry *io_t;
 
 io_t io_new(void);
-void io_free(io_t io);
+void io_del(io_t io);
 
 bool io_attach_read(io_t io, uint16_t port, io_callback_t callback);
 bool io_detach_read(io_t io, uint16_t port, io_callback_t *ret_callback);

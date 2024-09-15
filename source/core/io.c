@@ -11,7 +11,7 @@ typedef struct io_registry {
 } io_registry_t;
 
 io_t io_new(void) {
-	io_t io = (io_t) calloc(1, sizeof(io_registry_t));
+	io_t io = calloc(1, sizeof(io_registry_t));
 	return io;
 }
 
@@ -28,7 +28,8 @@ bool io_attach_read(io_t io, uint16_t port, io_callback_t callback) {
 bool io_detach_read(io_t io, uint16_t port, io_callback_t *ret_callback) {
 	io_callback_t *spot = &io->read_callbacks[port];
 	if(*spot == NULL) return false;
-	return *ret_callback = *spot, *spot = NULL, true;
+	if(ret_callback != NULL) *ret_callback = *spot;
+	return *spot = NULL, true;
 }
 
 bool io_attach_write(io_t io, uint16_t port, io_callback_t callback) {
@@ -40,7 +41,8 @@ bool io_attach_write(io_t io, uint16_t port, io_callback_t callback) {
 bool io_detach_write(io_t io, uint16_t port, io_callback_t *ret_callback) {
 	io_callback_t *spot = &io->write_callbacks[port];
 	if(*spot == NULL) return false;
-	return *ret_callback = *spot, *spot = NULL, true;
+	if(ret_callback != NULL) *ret_callback = *spot;
+	return *spot = NULL, true;
 }
 
 uint32_t io_read(io_t io, uint16_t port) {

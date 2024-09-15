@@ -46,13 +46,16 @@ void cpu_reset(cpu_t *cpu, mem_t mem, io_t io) {
 	// Make sure the instruction formats union is packed correctly.
 	assert(sizeof(instruction_t) == sizeof(uint32_t));
 
-	cpu->ip = 0;
-	cpu->cond &= ~1;
+	cpu->steps = 0;
+	cpu->ip = 0, cpu->cond &= ~1;
+	for(unsigned i = 0; i<16; i++)
+		cpu->data[i] = cpu->addr[i] = 0;
 	if(mem != NULL) cpu->mem = mem;
 	if(io != NULL) cpu->io = io;
 }
 
 bool cpu_execute(cpu_t *cpu) {
+	cpu->steps++;
 	uint32_t inst_word = mem_fetch_word(cpu->mem, cpu->ip);
 	instruction_t instr = {inst_word};
 

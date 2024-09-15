@@ -3,6 +3,7 @@
 #include <netinet/ip.h>
 #include <sys/socket.h>
 #include <poll.h>
+#include <stdlib.h>
 #include <unistd.h>
 
 typedef int fdesc_t;
@@ -31,14 +32,14 @@ static void telnet_callback(bool rw_select, uint32_t *data) {
 		if(character == 0xFF) ret = write(state.client_socket, "\xff\xff", req = 2);
 		else if(character == '\r') ret = write(state.client_socket, "\r\0", req = 2);
 		else ret = write(state.client_socket, &character, req = 1);
-		if(ret != req) telnet_cleanup();
+		if(ret != req) exit(EXIT_FAILURE);
 		return;
 	}
 
 	while(true) {
 		poll(&state.poll_descriptor, 1, 0);
 		if(!(state.poll_descriptor.revents & POLLIN)) { *data = 0x80000000; return; }
-		if(read(state.client_socket, &character, 1) != 1) { *data = 0xFFFFFFFF; return; }
+		if(read(state.client_socket, &character, 1) != 1) exit(EXIT_FAILURE);
 
 		// This is what Big Telnet demands you do to merely ignore the negotiation
 		// It will definitely not come back to bite me in the ass in a few months...
@@ -84,7 +85,7 @@ static void telnet_callback(bool rw_select, uint32_t *data) {
 	}
 }
 
-bool telnet_init(io_t io, uint16_t net_port) {
+bool telnet_setup(io_t io, uint16_t net_port) {
 	struct sockaddr_in descriptor;
 	descriptor.sin_family = AF_INET;
 	descriptor.sin_addr.s_addr = INADDR_ANY;
@@ -116,9 +117,11 @@ bool telnet_init(io_t io, uint16_t net_port) {
 	fail0: return false;
 }
 
-void telnet_cleanup(void) {
+void telnet_close(io_t io) {
 	if(state.client_socket != -1) {
 		close(state.client_socket);
 		state.client_socket = -1;
+		io_detach_read(io, 1, NULL);
+		io_detach_write(io, 1, NULL);
 	}
 }

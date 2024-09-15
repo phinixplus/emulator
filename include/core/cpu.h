@@ -8,9 +8,10 @@
 #include "io.h"
 
 typedef struct cpu {
-	uint32_t ip;
+	uint64_t steps;
 
-	// Register Files
+	// Architectural State
+	uint32_t ip;
 	uint32_t data[16];
 	uint32_t addr[16];
 	uint8_t cond;

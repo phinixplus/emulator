@@ -8,6 +8,10 @@ void dbgcon_callback(bool rw_select, uint32_t *data) {
 	printf("%d\n", *data);
 }
 
-bool dbgcon_init(io_t io) {
+bool dbgcon_setup(io_t io) {
 	return io_attach_write(io, 0, dbgcon_callback);
+}
+
+void dbgcon_close(io_t io) {
+	io_detach_write(io, 0, NULL);
 }

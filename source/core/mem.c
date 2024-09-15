@@ -40,7 +40,7 @@ mem_t mem_new(const char *fname) {
 	// Make sure the datums union is packed correctly.
 	assert(sizeof(mem_datum_t) == sizeof(uint32_t));
 
-	mem_t mem = (mem_t) calloc(MEM_SIZE_KIB, 1024);
+	mem_t mem = calloc(MEM_SIZE_KIB, 1024);
 	if(fname == NULL) return mem;
 
 	char buffer[8] = {0};

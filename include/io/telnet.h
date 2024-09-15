@@ -6,7 +6,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-bool telnet_init(io_t io, uint16_t net_port);
-void telnet_cleanup(void);
+bool telnet_setup(io_t io, uint16_t net_port);
+void telnet_close(io_t io);
 
 #endif // PPLUSEMU_IO_TELNET_H

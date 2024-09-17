@@ -85,7 +85,7 @@ io_fifo_t io_fifo_new(void) {
 	size_t size = sizeof(io_fifo_object_t);
 	size += (1 << IO_FIFO_SIZE_BITS) * sizeof(uint32_t);
 	io_fifo_t fifo = (io_fifo_t) calloc(1, size);
-	if(fifo->buffer == NULL) return NULL;
+	if(fifo == NULL) return NULL;
 	if(pthread_mutex_init(&fifo->mutex, NULL) != 0) return free(fifo), NULL;
 	fifo->widx = fifo->ridx = 0, fifo->empty = true, fifo->full = false;
 	return fifo;

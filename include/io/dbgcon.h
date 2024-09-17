@@ -6,6 +6,6 @@
 #include <stdbool.h>
 
 bool dbgcon_setup(io_t io);
-void dbgcon_close(io_t io);
+bool dbgcon_close(io_t io);
 
 #endif // PPLUSEMU_IO_DBGCON_H

@@ -363,12 +363,14 @@ bool cpu_execute(cpu_t *cpu) {
 			break;
 		case 0x39: // ADDlx
 			tmpg1 = (uint32_t)instr.wggi.imm;
+			if((tmpg1 & (1 << 15)) != 0) tmpg1 |= 0xFFFF0000;
 			tmpg1 += cpu->data[instr.wggi.src_r];
 			cpu->data[instr.wggi.dst_r] = tmpg1;
 			cpu->ip += 4;
 			break;
 		case 0x3A: // ADDly
 			tmpg1 = (uint32_t)instr.wggi.imm;
+			if((tmpg1 & (1 << 15)) != 0) tmpg1 |= 0xFFFF0000;
 			tmpg1 += cpu->data[instr.wggi.src_r];
 			cpu->addr[instr.wggi.dst_r] = tmpg1;
 			cpu->ip += 4;
@@ -421,7 +423,7 @@ bool cpu_execute(cpu_t *cpu) {
 			cpu->data[instr.wggi.dst_r] = tmpg1;
 			cpu->ip += 4;
 			break;
-		case 0x43: // INP
+		case 0x43: // IN
 			tmpg1 = (uint32_t)instr.wggi.imm;
 			tmpg1 += cpu->data[instr.wggi.src_r];
 			tmpg1 &= (1 << IO_ADDR_BITS) - 1;

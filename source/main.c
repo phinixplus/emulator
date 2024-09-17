@@ -20,7 +20,7 @@ static struct {
 } cleanup_registry;
 
 static void cleanup(void) {
-	dbgcon_close(cleanup_registry.io);
+	assert(dbgcon_close(cleanup_registry.io));
 	telnet_close(cleanup_registry.io);
 
 	io_del(cleanup_registry.io);
@@ -43,16 +43,9 @@ int main(int argc, char **argv) {
 	sig_int.sa_flags = 0;
 	sigaction(SIGINT, &sig_int, NULL);
 
-	// Setup IO
+	cpu_t cpu;
 	io_t io = io_new();
 	cleanup_registry.io = io;
-	assert(dbgcon_setup(io));
-	assert(telnet_setup(io, 2323));
-
-	// Setup memory and CPU
-	mem_t mem = mem_new(options.file);
-	cleanup_registry.mem = mem;
-	cpu_t cpu; cpu_reset(&cpu, mem, io);
 
 	// Prevent threads from trying to handle signals
 	// Signal mask is inherited by spawned threads
@@ -60,15 +53,23 @@ int main(int argc, char **argv) {
 	sigaddset(&signal_mask, SIGINT);
 	pthread_sigmask(SIG_BLOCK, &signal_mask, NULL);
 	{ // <- Spawn threads inside this block
+		assert(dbgcon_setup(io));
+		assert(telnet_setup(io, 2323)); // Soon to be a thread too
 		if(!options.verbose) pthread_create(
-			&cleanup_registry.freq,NULL, freq_thread, &cpu.steps);
+			&cleanup_registry.freq, NULL,
+			freq_thread, &cpu.steps
+		);
 	}
 	// Revert the mask so that main thread gets to handle the signals
 	pthread_sigmask(SIG_UNBLOCK, &signal_mask, NULL);
 
+	// Setup memory and CPU
+	mem_t mem = mem_new(options.file);
+	cleanup_registry.mem = mem;
+	cpu_reset(&cpu, mem, io);
+
 	// Do cycles and print sate if verbose
-	do { if(options.verbose) print_cpu_state(&cpu); }
-	while(cpu_execute(&cpu));
+	do { if(options.verbose) print_cpu_state(&cpu); } while(cpu_execute(&cpu));
 	fprintf(stderr, "CPU halted after %lu step(s).\n", cpu.steps);
 
 	exit(EXIT_SUCCESS);

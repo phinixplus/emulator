@@ -25,7 +25,7 @@ function build {
 
 	case $1 in
 		"release") gccargs="$gccargs -Werror -O2" ;;
-		"debug") gccargs="$gccargs -g" ;;
+		"debug") gccargs="$gccargs -g -rdynamic" ;;
 	esac
 	build_rec $srcdir
 	binfiles=$(find $bindir -maxdepth 1 -mindepth 1 -type f -name "*.o")

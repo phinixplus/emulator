@@ -42,6 +42,16 @@ typedef union instruction {
 } instruction_t;
 #pragma pack(pop)
 
+const char datareg_conv[][3] = {
+	"zr", "at", "rp", "t0", "t1", "t2", "a0", "a1",
+	"a2", "s0", "s1", "s2", "s3", "s4", "s5", "fp"
+};
+
+const char addrreg_conv[][3] = {
+	"a3", "a4", "a5", "t3", "t4", "t5", "t6", "t7",
+	"s6", "s7", "gp", "sp", "k0", "k1", "k2", "k3"
+};
+
 void cpu_reset(cpu_t *cpu, mem_t mem, io_t io) {
 	// Make sure the instruction formats union is packed correctly.
 	assert(sizeof(instruction_t) == sizeof(uint32_t));
@@ -494,4 +504,24 @@ bool cpu_execute(cpu_t *cpu) {
 	cpu->cond &= 0xFE;
 	cpu->data[0] = 0;
 	return true;
+}
+
+void cpu_print_state(cpu_t *cpu) {
+	char value[9] = {0};
+	fprintf(stderr, "---- Step: %lu ----\n", cpu->steps);
+	hex_string_of_length(value, cpu->ip, 8);
+	fprintf(stderr, "ip: %8s ", value);
+	hex_string_of_length(value, cpu->cond, 2);
+	fprintf(stderr, "c*: %2s\n", value);
+	for(int i = 0; i < 16; i++) {
+		hex_string_of_length(value, cpu->data[i], 8);
+		fprintf(stderr, "%s(x%x): %8s ", datareg_conv[i], i, value);
+		putchar((i & 3) == 3 ? '\n' : ' ');
+	}
+	for(int i = 0; i < 16; i++) {
+		hex_string_of_length(value, cpu->addr[i], 8);
+		fprintf(stderr, "%s(y%x): %8s ", addrreg_conv[i], i, value);
+		putchar((i & 3) == 3 ? '\n' : ' ');
+	}
+	fprintf(stderr, "-----------------\n");
 }

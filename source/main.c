@@ -1,11 +1,14 @@
+#include "main.h"
+
 #include <assert.h>
 #include <pthread.h>
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
 
 #include "args.h"
-#include "util.h"
 #include "core/cpu.h"
 #include "core/mem.h"
 #include "core/io.h"
@@ -19,16 +22,37 @@ static struct {
 	io_t io;
 } cleanup_registry;
 
+static bool running = true;
+bool is_running(void) { return running; }
+void stop_running(void) { running = false; }
+
+void exit_as_sighandler(int sigid) { 
+	fprintf(stderr, "Caught signal: %s\n", strsignal(sigid));
+	exit(EXIT_FAILURE);
+}
+
+void *freq_counter_thread(void *cycle_count) {
+	uint64_t *count = (uint64_t *) cycle_count;
+	uint64_t old_count = 0;
+	while(is_running()) {
+		sleep(1);
+		uint64_t tmp = *count;
+		float freq_mhz = (tmp - old_count) / 1e6;
+		fprintf(stderr, "%.1f MHz\n", freq_mhz);
+		old_count = tmp;
+	}
+	pthread_exit(NULL);
+}
+
 static void cleanup(void) {
+	stop_running();
 	assert(dbgcon_close(cleanup_registry.io));
 	telnet_close(cleanup_registry.io);
 
 	io_del(cleanup_registry.io);
 	mem_del(cleanup_registry.mem);
-	if(!options.verbose) {
-		pthread_cancel(cleanup_registry.freq);
+	if(!options.verbose) 
 		pthread_join(cleanup_registry.freq, NULL);
-	}
 }
 
 int main(int argc, char **argv) {
@@ -57,7 +81,7 @@ int main(int argc, char **argv) {
 		assert(telnet_setup(io, 2323)); // Soon to be a thread too
 		if(!options.verbose) pthread_create(
 			&cleanup_registry.freq, NULL,
-			freq_thread, &cpu.steps
+			freq_counter_thread, &cpu.steps
 		);
 	}
 	// Revert the mask so that main thread gets to handle the signals
@@ -69,7 +93,7 @@ int main(int argc, char **argv) {
 	cpu_reset(&cpu, mem, io);
 
 	// Do cycles and print sate if verbose
-	do { if(options.verbose) print_cpu_state(&cpu); } while(cpu_execute(&cpu));
+	do { if(options.verbose) cpu_print_state(&cpu); } while(cpu_execute(&cpu));
 	fprintf(stderr, "CPU halted after %lu step(s).\n", cpu.steps);
 
 	exit(EXIT_SUCCESS);

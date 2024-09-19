@@ -21,7 +21,11 @@ typedef struct cpu {
 	io_t io;
 } cpu_t;
 
+extern const char datareg_conv[][3];
+extern const char addrreg_conv[][3];
+
 void cpu_reset(cpu_t *cpu, mem_t memory, io_t io);
 bool cpu_execute(cpu_t *cpu);
+void cpu_print_state(cpu_t *cpu);
 
 #endif // PPLUSEMU_CORE_CPU_H

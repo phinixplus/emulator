@@ -212,6 +212,25 @@
 		(pc & 2 != 0 ? asm {pad} : 0`0) @ 0x44 @ {tgt} @ {addr} @ le(imm)
 }
 
+#ruledef word_cond_gpr_imm {
+	jmp {gpr: datareg} {imm: s16} if {cnd: condreg}     =>
+		(pc & 2 != 0 ? asm {pad} : 0`0) @ 0x45`8 @ {gpr} @ 0`1 @ {cnd} @ le(imm)
+	jmp {gpr: datareg} {imm: s16} if !{cnd: condreg}    =>
+		(pc & 2 != 0 ? asm {pad} : 0`0) @ 0x45`8 @ {gpr} @ 1`1 @ {cnd} @ le(imm)
+	jmp {gpr: addrreg} {imm: s16} if {cnd: condreg}     =>
+		(pc & 2 != 0 ? asm {pad} : 0`0) @ 0x46`8 @ {gpr} @ 0`1 @ {cnd} @ le(imm)
+	jmp {gpr: addrreg} {imm: s16} if !{cnd: condreg}    =>
+		(pc & 2 != 0 ? asm {pad} : 0`0) @ 0x46`8 @ {gpr} @ 1`1 @ {cnd} @ le(imm)
+	jmp ip {gpr: datareg} {imm: s16} if {cnd: condreg}  =>
+		(pc & 2 != 0 ? asm {pad} : 0`0) @ 0x47`8 @ {gpr} @ 0`1 @ {cnd} @ le(imm)
+	jmp ip {gpr: datareg} {imm: s16} if !{cnd: condreg} =>
+		(pc & 2 != 0 ? asm {pad} : 0`0) @ 0x47`8 @ {gpr} @ 0`1 @ {cnd} @ le(imm)
+	jmp ip {gpr: addrreg} {imm: s16} if {cnd: condreg}  =>
+		(pc & 2 != 0 ? asm {pad} : 0`0) @ 0x48`8 @ {gpr} @ 0`1 @ {cnd} @ le(imm)
+	jmp ip {gpr: addrreg} {imm: s16} if !{cnd: condreg} =>
+		(pc & 2 != 0 ? asm {pad} : 0`0) @ 0x48`8 @ {gpr} @ 1`1 @ {cnd} @ le(imm)
+}
+
 #ruledef extras {
 	hlt => 0x00_00`16
 	pad => 0x00_FF`16

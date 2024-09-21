@@ -4,11 +4,20 @@
 		{
 			"type": "cppdbg",
 			"request": "launch",
-			"name": "Launch",
+			"name": "Launch (Verbose)",
 			"preLaunchTask": "Launch",
 			"program": "${workspaceRoot}/build/pplusemu",
 			"cwd": "${workspaceRoot}/build/",
 			"args": [ "-v", "mem.hex" ]
+		},
+		{
+			"type": "cppdbg",
+			"request": "launch",
+			"name": "Launch (Silent)",
+			"preLaunchTask": "Launch",
+			"program": "${workspaceRoot}/build/pplusemu",
+			"cwd": "${workspaceRoot}/build/",
+			"args": [ "mem.hex" ]
 		}
 	]
 }

@@ -51,7 +51,7 @@ static void cleanup(void) {
 
 	io_del(cleanup_registry.io);
 	mem_del(cleanup_registry.mem);
-	if(!options.verbose) 
+	if(options.show_freq)
 		pthread_join(cleanup_registry.freq, NULL);
 }
 
@@ -79,7 +79,7 @@ int main(int argc, char **argv) {
 	{ // <- Spawn threads inside this block
 		assert(dbgcon_setup(io));
 		assert(telnet_setup(io, 2323)); // Soon to be a thread too
-		if(!options.verbose) pthread_create(
+		if(options.show_freq) pthread_create(
 			&cleanup_registry.freq, NULL,
 			freq_counter_thread, &cpu.steps
 		);

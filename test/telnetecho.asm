@@ -1,7 +1,8 @@
 #addr 0
 
-in x1 1
-tst neg c1 x1
-jmp zr if c1
-out x1 1
-jmp zr
+loop:
+	in t0 1
+	tst neg c1 t0
+	jmp ip loop if c1
+	out t0 1
+jmp ip loop

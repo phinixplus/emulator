@@ -224,7 +224,7 @@
 	jmp ip {gpr: datareg} {imm: s16} if {cnd: condreg}  =>
 		(pc & 2 != 0 ? asm {pad} : 0`0) @ 0x47`8 @ {gpr} @ 0`1 @ {cnd} @ le(imm)
 	jmp ip {gpr: datareg} {imm: s16} if !{cnd: condreg} =>
-		(pc & 2 != 0 ? asm {pad} : 0`0) @ 0x47`8 @ {gpr} @ 0`1 @ {cnd} @ le(imm)
+		(pc & 2 != 0 ? asm {pad} : 0`0) @ 0x47`8 @ {gpr} @ 1`1 @ {cnd} @ le(imm)
 	jmp ip {gpr: addrreg} {imm: s16} if {cnd: condreg}  =>
 		(pc & 2 != 0 ? asm {pad} : 0`0) @ 0x48`8 @ {gpr} @ 0`1 @ {cnd} @ le(imm)
 	jmp ip {gpr: addrreg} {imm: s16} if !{cnd: condreg} =>
@@ -237,10 +237,10 @@
 }
 
 #ruledef pseudo {
-	jmp {gpr: datareg} => asm { jmp {gpr} if !c0}
-	jmp {gpr: addrreg} => asm { jmp {gpr} if !c0}
-	jmp ip {gpr: datareg} => asm { jmp ip {gpr} if !c0}
-	jmp ip {gpr: addrreg} => asm { jmp ip {gpr} if !c0}
+	jmp {gpr: datareg} => asm { jmp {gpr} if !c0 }
+	jmp {gpr: addrreg} => asm { jmp {gpr} if !c0 }
+	jmp ip {gpr: datareg} => asm { jmp ip {gpr} if !c0 }
+	jmp ip {gpr: addrreg} => asm { jmp ip {gpr} if !c0 }
 
 	add {tgt: datareg} {imm: s16}  => asm { add {tgt} {tgt} {imm} }
 	add {tgt: addrreg} {imm: s16}  => asm { add {tgt} {tgt} {imm} }
@@ -254,14 +254,47 @@
 	xor {tgt: datareg} {imm: u16}  => asm { xor {tgt} {tgt} {imm} }
 	xor {tgt: datareg} ^{imm: u16} => asm { xor {tgt} {tgt} ^{imm} }
 
-	in {tgt: datareg} {imm: s16} => asm { in {tgt} x0 {imm} }
+	in  {tgt: datareg} {imm: s16} => asm { in {tgt} x0 {imm} }
 	out {tgt: datareg} {imm: s16} => asm { out {tgt} x0 {imm} }
+
+	jmp {gpr: datareg} {imm: s16}    => asm { jmp {gpr} {imm} if !c0 }
+	jmp {gpr: addrreg} {imm: s16}    => asm { jmp {gpr} {imm} if !c0 }
+	jmp ip {gpr: datareg} {imm: s16} => asm { jmp ip {gpr} {imm} if !c0 }
+	jmp ip {gpr: addrreg} {imm: s16} => asm { jmp ip {gpr} {imm} if !c0 }
+	jmp ip {label: u32} if {cnd: condreg} => {
+		offset = label - pc - (pc & 2 != 0 ? 2 : 0)
+		assert(offset[31:16] == 0 || offset[31:16] == -1`16)
+		asm { jmp ip zr {offset} if {cnd} }
+	}
+	jmp ip {label: u32} if !{cnd: condreg} => {
+		offset = label - pc - (pc & 2 != 0 ? 2 : 0)
+		assert(offset[31:16] == 0 || offset[31:16] == -1`16)
+		asm { jmp ip zr {offset} if !{cnd} }
+	}
+	jmp ip {label: u32} => {
+		offset = label - pc - (pc & 2 != 0 ? 2 : 0)
+		assert(offset[31:16] == 0 || offset[31:16] == -1`16)
+		asm { jmp ip zr {offset} if !c0 }
+	}
 }
 
 #ruledef macro {
 	li  {dst: datareg} {imm: i32} => asm {
-		ior {dst} x0 {imm}[15:0]
+		ior {dst} zr {imm}[15:0]
 		ior {dst} ^{imm}[31:16]
+	}
+
+	jmp {label: u32} if {cnd: condreg} => asm {
+		li at {label}
+		jmp at if {cnd}
+	}
+	jmp {label: u32} if !{cnd: condreg} => asm {
+		li at {label}
+		jmp at if !{cnd}
+	}
+	jmp {label: u32} => asm {
+		li at {label}
+		jmp at if !c0
 	}
 }
 

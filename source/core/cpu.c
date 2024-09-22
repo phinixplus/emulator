@@ -460,7 +460,7 @@ bool cpu_execute(cpu_t *cpu) {
 			if((tmpg1 & (1 << 15)) != 0) tmpg1 |= 0xFFFF0000;
 			tmpg1 += cpu->data[instr.wcgi.tgt_g];
 			if(tmpc1 != tmpc2) cpu->ip = tmpg1;
-			else cpu->ip += 2;
+			else cpu->ip += 4;
 			break;
 		case 0x46: // JCAry
 			tmpc1 = (instr.wcgi.neg == 1);
@@ -469,7 +469,7 @@ bool cpu_execute(cpu_t *cpu) {
 			if((tmpg1 & (1 << 15)) != 0) tmpg1 |= 0xFFFF0000;
 			tmpg1 += cpu->addr[instr.wcgi.tgt_g];
 			if(tmpc1 != tmpc2) cpu->ip = tmpg1;
-			else cpu->ip += 2;
+			else cpu->ip += 4;
 			break;
 		case 0x47: // JCRrx
 			tmpc1 = (instr.wcgi.neg == 1);
@@ -478,7 +478,7 @@ bool cpu_execute(cpu_t *cpu) {
 			if((tmpg1 & (1 << 15)) != 0) tmpg1 |= 0xFFFF0000;
 			tmpg1 += cpu->data[instr.wcgi.tgt_g];
 			if(tmpc1 != tmpc2) cpu->ip += tmpg1;
-			else cpu->ip += 2;
+			else cpu->ip += 4;
 			break;
 		case 0x48: // JCRry
 			tmpc1 = (instr.wcgi.neg == 1);
@@ -487,7 +487,7 @@ bool cpu_execute(cpu_t *cpu) {
 			if((tmpg1 & (1 << 15)) != 0) tmpg1 |= 0xFFFF0000;
 			tmpg1 += cpu->addr[instr.wcgi.tgt_g];
 			if(tmpc1 != tmpc2) cpu->ip += tmpg1;
-			else cpu->ip += 2;
+			else cpu->ip += 4;
 			break;
 		case 0x49: case 0x4A: case 0x4B:
 		case 0x4C: case 0x4D: case 0x4E: case 0x4F:

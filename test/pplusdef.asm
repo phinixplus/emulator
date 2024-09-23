@@ -141,13 +141,13 @@
 	tst odd {cnd: condreg} {gpr: addrreg} => 0x2D`8 @ {gpr} @ 0`1 @ {cnd}
 	tst evn {cnd: condreg} {gpr: addrreg} => 0x2D`8 @ {gpr} @ 1`1 @ {cnd}
 
-	jmp {gpr: datareg} if {cnd: condreg}     => 0x2E`8 @ {gpr} @ 0`1 @ {cnd}
-	jmp {gpr: datareg} if !{cnd: condreg}    => 0x2E`8 @ {gpr} @ 1`1 @ {cnd}
-	jmp {gpr: addrreg} if {cnd: condreg}     => 0x2F`8 @ {gpr} @ 0`1 @ {cnd}
-	jmp {gpr: addrreg} if !{cnd: condreg}    => 0x2F`8 @ {gpr} @ 1`1 @ {cnd}
-	jmp ip {gpr: datareg} if {cnd: condreg}  => 0x30`8 @ {gpr} @ 0`1 @ {cnd}
+	jmp    {gpr: datareg} if  {cnd: condreg} => 0x2E`8 @ {gpr} @ 0`1 @ {cnd}
+	jmp    {gpr: datareg} if !{cnd: condreg} => 0x2E`8 @ {gpr} @ 1`1 @ {cnd}
+	jmp    {gpr: addrreg} if  {cnd: condreg} => 0x2F`8 @ {gpr} @ 0`1 @ {cnd}
+	jmp    {gpr: addrreg} if !{cnd: condreg} => 0x2F`8 @ {gpr} @ 1`1 @ {cnd}
+	jmp ip {gpr: datareg} if  {cnd: condreg} => 0x30`8 @ {gpr} @ 0`1 @ {cnd}
 	jmp ip {gpr: datareg} if !{cnd: condreg} => 0x30`8 @ {gpr} @ 1`1 @ {cnd}
-	jmp ip {gpr: addrreg} if {cnd: condreg}  => 0x31`8 @ {gpr} @ 0`1 @ {cnd}
+	jmp ip {gpr: addrreg} if  {cnd: condreg} => 0x31`8 @ {gpr} @ 0`1 @ {cnd}
 	jmp ip {gpr: addrreg} if !{cnd: condreg} => 0x31`8 @ {gpr} @ 1`1 @ {cnd}
 }
 
@@ -184,96 +184,76 @@
 }
 
 #ruledef word_gpr_gpr_imm {
-	add {dst: datareg} {src: datareg} {imm: s16}  =>
-		(pc & 2 != 0 ? asm {pad} : 0`0) @ 0x39 @ {dst} @ {src} @ le(imm)
-	add {dst: addrreg} {src: addrreg} {imm: s16}  =>
-		(pc & 2 != 0 ? asm {pad} : 0`0) @ 0x3A @ {dst} @ {src} @ le(imm)
-	add {dst: datareg} {src: datareg} ^{imm: s16} =>
-		(pc & 2 != 0 ? asm {pad} : 0`0) @ 0x3B @ {dst} @ {src} @ le(imm)
-	add {dst: addrreg} {src: addrreg} ^{imm: s16} =>
-		(pc & 2 != 0 ? asm {pad} : 0`0) @ 0x3C @ {dst} @ {src} @ le(imm)
+	add {dst: datareg} {src: datareg}  {imm: s16} => asm {pad} @ 0x39 @ {dst} @ {src} @ le(imm)
+	add {dst: addrreg} {src: addrreg}  {imm: s16} => asm {pad} @ 0x3A @ {dst} @ {src} @ le(imm)
+	add {dst: datareg} {src: datareg} ^{imm: s16} => asm {pad} @ 0x3B @ {dst} @ {src} @ le(imm)
+	add {dst: addrreg} {src: addrreg} ^{imm: s16} => asm {pad} @ 0x3C @ {dst} @ {src} @ le(imm)
 
-	and {dst: datareg} {src: datareg} {imm: u16}  =>
-		(pc & 2 != 0 ? asm {pad} : 0`0) @ 0x3D @ {dst} @ {src} @ le(imm)
-	and {dst: datareg} {src: datareg} ^{imm: u16} =>
-		(pc & 2 != 0 ? asm {pad} : 0`0) @ 0x3E @ {dst} @ {src} @ le(imm)
-	ior {dst: datareg} {src: datareg} {imm: u16}  =>
-		(pc & 2 != 0 ? asm {pad} : 0`0) @ 0x3F @ {dst} @ {src} @ le(imm)
-	ior {dst: datareg} {src: datareg} ^{imm: u16} =>
-		(pc & 2 != 0 ? asm {pad} : 0`0) @ 0x40 @ {dst} @ {src} @ le(imm)
-	xor {dst: datareg} {src: datareg} {imm: u16}  =>
-		(pc & 2 != 0 ? asm {pad} : 0`0) @ 0x41 @ {dst} @ {src} @ le(imm)
-	xor {dst: datareg} {src: datareg} ^{imm: u16} =>
-		(pc & 2 != 0 ? asm {pad} : 0`0) @ 0x42 @ {dst} @ {src} @ le(imm)
+	and {dst: datareg} {src: datareg}  {imm: u16} => asm {pad} @ 0x3D @ {dst} @ {src} @ le(imm)
+	and {dst: datareg} {src: datareg} ^{imm: u16} => asm {pad} @ 0x3E @ {dst} @ {src} @ le(imm)
+	ior {dst: datareg} {src: datareg}  {imm: u16} => asm {pad} @ 0x3F @ {dst} @ {src} @ le(imm)
+	ior {dst: datareg} {src: datareg} ^{imm: u16} => asm {pad} @ 0x40 @ {dst} @ {src} @ le(imm)
+	xor {dst: datareg} {src: datareg}  {imm: u16} => asm {pad} @ 0x41 @ {dst} @ {src} @ le(imm)
+	xor {dst: datareg} {src: datareg} ^{imm: u16} => asm {pad} @ 0x42 @ {dst} @ {src} @ le(imm)
 
-	in  {tgt: datareg} {addr: datareg} {imm: s16} =>
-		(pc & 2 != 0 ? asm {pad} : 0`0) @ 0x43 @ {tgt} @ {addr} @ le(imm)
-	out {tgt: datareg} {addr: datareg} {imm: s16} =>
-		(pc & 2 != 0 ? asm {pad} : 0`0) @ 0x44 @ {tgt} @ {addr} @ le(imm)
+	in  {tgt: datareg} {addr: datareg}  {imm: s16} => asm {pad} @ 0x43 @ {tgt} @ {addr} @ le(imm)
+	out {tgt: datareg} {addr: datareg}  {imm: s16} => asm {pad} @ 0x44 @ {tgt} @ {addr} @ le(imm)
 }
 
 #ruledef word_cond_gpr_imm {
-	jmp {gpr: datareg} {imm: s16} if {cnd: condreg}     =>
-		(pc & 2 != 0 ? asm {pad} : 0`0) @ 0x45`8 @ {gpr} @ 0`1 @ {cnd} @ le(imm)
-	jmp {gpr: datareg} {imm: s16} if !{cnd: condreg}    =>
-		(pc & 2 != 0 ? asm {pad} : 0`0) @ 0x45`8 @ {gpr} @ 1`1 @ {cnd} @ le(imm)
-	jmp {gpr: addrreg} {imm: s16} if {cnd: condreg}     =>
-		(pc & 2 != 0 ? asm {pad} : 0`0) @ 0x46`8 @ {gpr} @ 0`1 @ {cnd} @ le(imm)
-	jmp {gpr: addrreg} {imm: s16} if !{cnd: condreg}    =>
-		(pc & 2 != 0 ? asm {pad} : 0`0) @ 0x46`8 @ {gpr} @ 1`1 @ {cnd} @ le(imm)
-	jmp ip {gpr: datareg} {imm: s16} if {cnd: condreg}  =>
-		(pc & 2 != 0 ? asm {pad} : 0`0) @ 0x47`8 @ {gpr} @ 0`1 @ {cnd} @ le(imm)
-	jmp ip {gpr: datareg} {imm: s16} if !{cnd: condreg} =>
-		(pc & 2 != 0 ? asm {pad} : 0`0) @ 0x47`8 @ {gpr} @ 1`1 @ {cnd} @ le(imm)
-	jmp ip {gpr: addrreg} {imm: s16} if {cnd: condreg}  =>
-		(pc & 2 != 0 ? asm {pad} : 0`0) @ 0x48`8 @ {gpr} @ 0`1 @ {cnd} @ le(imm)
-	jmp ip {gpr: addrreg} {imm: s16} if !{cnd: condreg} =>
-		(pc & 2 != 0 ? asm {pad} : 0`0) @ 0x48`8 @ {gpr} @ 1`1 @ {cnd} @ le(imm)
+	jmp    {gpr: datareg} {imm: s16} if  {cnd: condreg} => asm {pad} @ 0x45`8 @ {gpr} @ 0`1 @ {cnd} @ le(imm)
+	jmp    {gpr: datareg} {imm: s16} if !{cnd: condreg} => asm {pad} @ 0x45`8 @ {gpr} @ 1`1 @ {cnd} @ le(imm)
+	jmp    {gpr: addrreg} {imm: s16} if  {cnd: condreg} => asm {pad} @ 0x46`8 @ {gpr} @ 0`1 @ {cnd} @ le(imm)
+	jmp    {gpr: addrreg} {imm: s16} if !{cnd: condreg} => asm {pad} @ 0x46`8 @ {gpr} @ 1`1 @ {cnd} @ le(imm)
+	jmp ip {gpr: datareg} {imm: s16} if  {cnd: condreg} => asm {pad} @ 0x47`8 @ {gpr} @ 0`1 @ {cnd} @ le(imm)
+	jmp ip {gpr: datareg} {imm: s16} if !{cnd: condreg} => asm {pad} @ 0x47`8 @ {gpr} @ 1`1 @ {cnd} @ le(imm)
+	jmp ip {gpr: addrreg} {imm: s16} if  {cnd: condreg} => asm {pad} @ 0x48`8 @ {gpr} @ 0`1 @ {cnd} @ le(imm)
+	jmp ip {gpr: addrreg} {imm: s16} if !{cnd: condreg} => asm {pad} @ 0x48`8 @ {gpr} @ 1`1 @ {cnd} @ le(imm)
 }
 
 #ruledef extras {
 	hlt => 0x00_00`16
-	pad => 0x00_FF`16
+	pad => (pc & 2 != 0 ? 0x00_FF`16 : 0`0)
 }
 
 #ruledef pseudo {
-	jmp {gpr: datareg} => asm { jmp {gpr} if !c0 }
-	jmp {gpr: addrreg} => asm { jmp {gpr} if !c0 }
+	jmp    {gpr: datareg} => asm { jmp    {gpr} if !c0 }
+	jmp    {gpr: addrreg} => asm { jmp    {gpr} if !c0 }
 	jmp ip {gpr: datareg} => asm { jmp ip {gpr} if !c0 }
 	jmp ip {gpr: addrreg} => asm { jmp ip {gpr} if !c0 }
 
-	add {tgt: datareg} {imm: s16}  => asm { add {tgt} {tgt} {imm} }
-	add {tgt: addrreg} {imm: s16}  => asm { add {tgt} {tgt} {imm} }
+	add {tgt: datareg}  {imm: s16} => asm { add {tgt} {tgt}  {imm} }
+	add {tgt: addrreg}  {imm: s16} => asm { add {tgt} {tgt}  {imm} }
 	add {tgt: datareg} ^{imm: s16} => asm { add {tgt} {tgt} ^{imm} }
 	add {tgt: addrreg} ^{imm: s16} => asm { add {tgt} {tgt} ^{imm} }
 
-	and {tgt: datareg} {imm: u16}  => asm { and {tgt} {tgt} {imm} }
+	and {tgt: datareg}  {imm: u16} => asm { and {tgt} {tgt}  {imm} }
 	and {tgt: datareg} ^{imm: u16} => asm { and {tgt} {tgt} ^{imm} }
-	ior {tgt: datareg} {imm: u16}  => asm { ior {tgt} {tgt} {imm} }
+	ior {tgt: datareg}  {imm: u16} => asm { ior {tgt} {tgt}  {imm} }
 	ior {tgt: datareg} ^{imm: u16} => asm { ior {tgt} {tgt} ^{imm} }
-	xor {tgt: datareg} {imm: u16}  => asm { xor {tgt} {tgt} {imm} }
+	xor {tgt: datareg}  {imm: u16} => asm { xor {tgt} {tgt}  {imm} }
 	xor {tgt: datareg} ^{imm: u16} => asm { xor {tgt} {tgt} ^{imm} }
 
-	in  {tgt: datareg} {imm: s16} => asm { in {tgt} x0 {imm} }
+	in  {tgt: datareg} {imm: s16} => asm { in  {tgt} x0 {imm} }
 	out {tgt: datareg} {imm: s16} => asm { out {tgt} x0 {imm} }
 
-	jmp {gpr: datareg} {imm: s16}    => asm { jmp {gpr} {imm} if !c0 }
-	jmp {gpr: addrreg} {imm: s16}    => asm { jmp {gpr} {imm} if !c0 }
+	jmp    {gpr: datareg} {imm: s16} => asm { jmp    {gpr} {imm} if !c0 }
+	jmp    {gpr: addrreg} {imm: s16} => asm { jmp    {gpr} {imm} if !c0 }
 	jmp ip {gpr: datareg} {imm: s16} => asm { jmp ip {gpr} {imm} if !c0 }
 	jmp ip {gpr: addrreg} {imm: s16} => asm { jmp ip {gpr} {imm} if !c0 }
 	jmp ip {label: u32} if {cnd: condreg} => {
 		offset = label - pc - (pc & 2 != 0 ? 2 : 0)
-		assert(offset[31:16] == 0 || offset[31:16] == -1`16)
+		assert(offset[31:15] == 0 || offset[31:15] == -1`17)
 		asm { jmp ip zr {offset} if {cnd} }
 	}
 	jmp ip {label: u32} if !{cnd: condreg} => {
 		offset = label - pc - (pc & 2 != 0 ? 2 : 0)
-		assert(offset[31:16] == 0 || offset[31:16] == -1`16)
+		assert(offset[31:15] == 0 || offset[31:15] == -1`17)
 		asm { jmp ip zr {offset} if !{cnd} }
 	}
 	jmp ip {label: u32} => {
 		offset = label - pc - (pc & 2 != 0 ? 2 : 0)
-		assert(offset[31:16] == 0 || offset[31:16] == -1`16)
+		assert(offset[31:15] == 0 || offset[31:15] == -1`17)
 		asm { jmp ip zr {offset} if !c0 }
 	}
 }

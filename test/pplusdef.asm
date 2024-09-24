@@ -81,140 +81,182 @@
 	c7 => 0x7`3
 }
 
-#ruledef half_gpr_gpr {
-	mov {dst: datareg} {src: datareg} => 0x01`8 @ {dst} @ {src}
-	mov {dst: datareg} {src: addrreg} => 0x02`8 @ {dst} @ {src}
-	mov {dst: addrreg} {src: datareg} => 0x03`8 @ {dst} @ {src}
-	mov {dst: addrreg} {src: addrreg} => 0x04`8 @ {dst} @ {src}
-	add {dst: datareg} {src: datareg} => 0x05`8 @ {dst} @ {src}
-	add {dst: addrreg} {src: addrreg} => 0x06`8 @ {dst} @ {src}
-	sub {dst: datareg} {src: datareg} => 0x07`8 @ {dst} @ {src}
-	sub {dst: addrreg} {src: addrreg} => 0x08`8 @ {dst} @ {src}
+; ---------------------------------------------------------------------------- ;
 
-	and {dst: datareg} {src: datareg} => 0x09`8 @ {dst} @ {src}
-	nnd {dst: datareg} {src: datareg} => 0x0A`8 @ {dst} @ {src}
-	ior {dst: datareg} {src: datareg} => 0x0B`8 @ {dst} @ {src}
-	nor {dst: datareg} {src: datareg} => 0x0C`8 @ {dst} @ {src}
-	xor {dst: datareg} {src: datareg} => 0x0D`8 @ {dst} @ {src}
+;         |         
+; _16____8|7______0_
+; | funct | opcode |
+; |_______|________|
+;         |         
 
-	sl  {dst: datareg} {src: datareg} => 0x0E`8 @ {dst} @ {src}
-	sru {dst: datareg} {src: datareg} => 0x0F`8 @ {dst} @ {src}
-	srs {dst: datareg} {src: datareg} => 0x10`8 @ {dst} @ {src}
-	bl  {dst: datareg} {src: datareg} => 0x11`8 @ {dst} @ {src}
-	bru {dst: datareg} {src: datareg} => 0x12`8 @ {dst} @ {src}
-	brs {dst: datareg} {src: datareg} => 0x13`8 @ {dst} @ {src}
-
-	lbu {tgt: datareg} {addr: datareg} => 0x14`8 @ {tgt} @ {addr}
-	lbu {tgt: datareg} {addr: addrreg} => 0x15`8 @ {tgt} @ {addr}
-	lbs {tgt: datareg} {addr: datareg} => 0x16`8 @ {tgt} @ {addr}
-	lbs {tgt: datareg} {addr: addrreg} => 0x17`8 @ {tgt} @ {addr}
-	sb  {tgt: datareg} {addr: datareg} => 0x18`8 @ {tgt} @ {addr}
-	sb  {tgt: datareg} {addr: addrreg} => 0x19`8 @ {tgt} @ {addr}
-	lhu {tgt: datareg} {addr: datareg} => 0x1A`8 @ {tgt} @ {addr}
-	lhu {tgt: datareg} {addr: addrreg} => 0x1B`8 @ {tgt} @ {addr}
-	lhs {tgt: datareg} {addr: datareg} => 0x1C`8 @ {tgt} @ {addr}
-	lhs {tgt: datareg} {addr: addrreg} => 0x1D`8 @ {tgt} @ {addr}
-	sh  {tgt: datareg} {addr: datareg} => 0x1E`8 @ {tgt} @ {addr}
-	sh  {tgt: datareg} {addr: addrreg} => 0x1F`8 @ {tgt} @ {addr}
-	lw  {tgt: datareg} {addr: datareg} => 0x20`8 @ {tgt} @ {addr}
-	lw  {tgt: datareg} {addr: addrreg} => 0x21`8 @ {tgt} @ {addr}
-	sw  {tgt: datareg} {addr: datareg} => 0x22`8 @ {tgt} @ {addr}
-	sw  {tgt: datareg} {addr: addrreg} => 0x23`8 @ {tgt} @ {addr}
-
-	jnl {dst: datareg} {src: datareg} => 0x24`8 @ {dst} @ {src}
-	jnl {dst: datareg} {src: addrreg} => 0x25`8 @ {dst} @ {src}
-	jnl {dst: addrreg} {src: datareg} => 0x26`8 @ {dst} @ {src}
-	jnl {dst: addrreg} {src: addrreg} => 0x27`8 @ {dst} @ {src}
+#ruledef native_hs {
+	hlt => 0x00_00`16
+	pad => (pc & 2 != 0 ? 0x00_FF`16 : 0`0)
 }
 
-#ruledef half_gpr_cnd {
-	tst zer {cnd: condreg} {gpr: datareg} => 0x28`8 @ {gpr} @ 0`1 @ {cnd}
-	tst nzr {cnd: condreg} {gpr: datareg} => 0x28`8 @ {gpr} @ 1`1 @ {cnd}
-	tst zer {cnd: condreg} {gpr: addrreg} => 0x29`8 @ {gpr} @ 0`1 @ {cnd}
-	tst nzr {cnd: condreg} {gpr: addrreg} => 0x29`8 @ {gpr} @ 1`1 @ {cnd}
-	tst neg {cnd: condreg} {gpr: datareg} => 0x2A`8 @ {gpr} @ 0`1 @ {cnd}
-	tst pos {cnd: condreg} {gpr: datareg} => 0x2A`8 @ {gpr} @ 1`1 @ {cnd}
-	tst neg {cnd: condreg} {gpr: addrreg} => 0x2B`8 @ {gpr} @ 0`1 @ {cnd}
-	tst pos {cnd: condreg} {gpr: addrreg} => 0x2B`8 @ {gpr} @ 1`1 @ {cnd}
-	tst odd {cnd: condreg} {gpr: datareg} => 0x2C`8 @ {gpr} @ 0`1 @ {cnd}
-	tst evn {cnd: condreg} {gpr: datareg} => 0x2C`8 @ {gpr} @ 1`1 @ {cnd}
-	tst odd {cnd: condreg} {gpr: addrreg} => 0x2D`8 @ {gpr} @ 0`1 @ {cnd}
-	tst evn {cnd: condreg} {gpr: addrreg} => 0x2D`8 @ {gpr} @ 1`1 @ {cnd}
+;                 |         
+; _15___12_11____8|7______0_
+; | src.g | tgt.g | opcode |
+; |_______|_______|________|
+;                 |         
 
-	jmp    {gpr: datareg} if  {cnd: condreg} => 0x2E`8 @ {gpr} @ 0`1 @ {cnd}
-	jmp    {gpr: datareg} if !{cnd: condreg} => 0x2E`8 @ {gpr} @ 1`1 @ {cnd}
-	jmp    {gpr: addrreg} if  {cnd: condreg} => 0x2F`8 @ {gpr} @ 0`1 @ {cnd}
-	jmp    {gpr: addrreg} if !{cnd: condreg} => 0x2F`8 @ {gpr} @ 1`1 @ {cnd}
-	jmp ip {gpr: datareg} if  {cnd: condreg} => 0x30`8 @ {gpr} @ 0`1 @ {cnd}
-	jmp ip {gpr: datareg} if !{cnd: condreg} => 0x30`8 @ {gpr} @ 1`1 @ {cnd}
-	jmp ip {gpr: addrreg} if  {cnd: condreg} => 0x31`8 @ {gpr} @ 0`1 @ {cnd}
-	jmp ip {gpr: addrreg} if !{cnd: condreg} => 0x31`8 @ {gpr} @ 1`1 @ {cnd}
+#ruledef native_hgg {
+	mov {dst: datareg} {src: datareg} => 0x01`8 @ {src} @ {dst}
+	mov {dst: datareg} {src: addrreg} => 0x02`8 @ {src} @ {dst}
+	mov {dst: addrreg} {src: datareg} => 0x03`8 @ {src} @ {dst}
+	mov {dst: addrreg} {src: addrreg} => 0x04`8 @ {src} @ {dst}
+	add {dst: datareg} {src: datareg} => 0x05`8 @ {src} @ {dst}
+	add {dst: addrreg} {src: addrreg} => 0x06`8 @ {src} @ {dst}
+	sub {dst: datareg} {src: datareg} => 0x07`8 @ {src} @ {dst}
+	sub {dst: addrreg} {src: addrreg} => 0x08`8 @ {src} @ {dst}
+
+	and {dst: datareg} {src: datareg} => 0x09`8 @ {src} @ {dst}
+	nnd {dst: datareg} {src: datareg} => 0x0A`8 @ {src} @ {dst}
+	ior {dst: datareg} {src: datareg} => 0x0B`8 @ {src} @ {dst}
+	nor {dst: datareg} {src: datareg} => 0x0C`8 @ {src} @ {dst}
+	xor {dst: datareg} {src: datareg} => 0x0D`8 @ {src} @ {dst}
+
+	sl  {dst: datareg} {src: datareg} => 0x0E`8 @ {src} @ {dst}
+	sru {dst: datareg} {src: datareg} => 0x0F`8 @ {src} @ {dst}
+	srs {dst: datareg} {src: datareg} => 0x10`8 @ {src} @ {dst}
+	bl  {dst: datareg} {src: datareg} => 0x11`8 @ {src} @ {dst}
+	bru {dst: datareg} {src: datareg} => 0x12`8 @ {src} @ {dst}
+	brs {dst: datareg} {src: datareg} => 0x13`8 @ {src} @ {dst}
+
+	lbu {tgt: datareg} {addr: datareg} => 0x14`8 @ {addr} @ {tgt}
+	lbu {tgt: datareg} {addr: addrreg} => 0x15`8 @ {addr} @ {tgt}
+	lbs {tgt: datareg} {addr: datareg} => 0x16`8 @ {addr} @ {tgt}
+	lbs {tgt: datareg} {addr: addrreg} => 0x17`8 @ {addr} @ {tgt}
+	sb  {tgt: datareg} {addr: datareg} => 0x18`8 @ {addr} @ {tgt}
+	sb  {tgt: datareg} {addr: addrreg} => 0x19`8 @ {addr} @ {tgt}
+	lhu {tgt: datareg} {addr: datareg} => 0x1A`8 @ {addr} @ {tgt}
+	lhu {tgt: datareg} {addr: addrreg} => 0x1B`8 @ {addr} @ {tgt}
+	lhs {tgt: datareg} {addr: datareg} => 0x1C`8 @ {addr} @ {tgt}
+	lhs {tgt: datareg} {addr: addrreg} => 0x1D`8 @ {addr} @ {tgt}
+	sh  {tgt: datareg} {addr: datareg} => 0x1E`8 @ {addr} @ {tgt}
+	sh  {tgt: datareg} {addr: addrreg} => 0x1F`8 @ {addr} @ {tgt}
+	lw  {tgt: datareg} {addr: datareg} => 0x20`8 @ {addr} @ {tgt}
+	lw  {tgt: datareg} {addr: addrreg} => 0x21`8 @ {addr} @ {tgt}
+	sw  {tgt: datareg} {addr: datareg} => 0x22`8 @ {addr} @ {tgt}
+	sw  {tgt: datareg} {addr: addrreg} => 0x23`8 @ {addr} @ {tgt}
+
+	jnl {dst: datareg} {src: datareg} => 0x24`8 @ {src} @ {dst}
+	jnl {dst: datareg} {src: addrreg} => 0x25`8 @ {src} @ {dst}
+	jnl {dst: addrreg} {src: datareg} => 0x26`8 @ {src} @ {dst}
+	jnl {dst: addrreg} {src: addrreg} => 0x27`8 @ {src} @ {dst}
 }
 
-#ruledef half_gpr_imm {
+;                       |         
+; _15____14___12_11____8|7______0_
+; | neg | tgt.c | tgt.g | opcode |
+; |_____|_______|_______|________|
+;                       |         
+
+#ruledef native_hcg {
+	tst zer {cnd: condreg} {gpr: datareg} => 0x28`8 @ 0`1 @ {cnd} @ {gpr}
+	tst nzr {cnd: condreg} {gpr: datareg} => 0x28`8 @ 1`1 @ {cnd} @ {gpr}
+	tst zer {cnd: condreg} {gpr: addrreg} => 0x29`8 @ 0`1 @ {cnd} @ {gpr}
+	tst nzr {cnd: condreg} {gpr: addrreg} => 0x29`8 @ 1`1 @ {cnd} @ {gpr}
+	tst neg {cnd: condreg} {gpr: datareg} => 0x2A`8 @ 0`1 @ {cnd} @ {gpr}
+	tst pos {cnd: condreg} {gpr: datareg} => 0x2A`8 @ 1`1 @ {cnd} @ {gpr}
+	tst neg {cnd: condreg} {gpr: addrreg} => 0x2B`8 @ 0`1 @ {cnd} @ {gpr}
+	tst pos {cnd: condreg} {gpr: addrreg} => 0x2B`8 @ 1`1 @ {cnd} @ {gpr}
+	tst odd {cnd: condreg} {gpr: datareg} => 0x2C`8 @ 0`1 @ {cnd} @ {gpr}
+	tst evn {cnd: condreg} {gpr: datareg} => 0x2C`8 @ 1`1 @ {cnd} @ {gpr}
+	tst odd {cnd: condreg} {gpr: addrreg} => 0x2D`8 @ 0`1 @ {cnd} @ {gpr}
+	tst evn {cnd: condreg} {gpr: addrreg} => 0x2D`8 @ 1`1 @ {cnd} @ {gpr}
+
+	jmp    {gpr: datareg} if  {cnd: condreg} => 0x2E`8 @ 0`1 @ {cnd} @ {gpr}
+	jmp    {gpr: datareg} if !{cnd: condreg} => 0x2E`8 @ 1`1 @ {cnd} @ {gpr}
+	jmp    {gpr: addrreg} if  {cnd: condreg} => 0x2F`8 @ 0`1 @ {cnd} @ {gpr}
+	jmp    {gpr: addrreg} if !{cnd: condreg} => 0x2F`8 @ 1`1 @ {cnd} @ {gpr}
+	jmp ip {gpr: datareg} if  {cnd: condreg} => 0x30`8 @ 0`1 @ {cnd} @ {gpr}
+	jmp ip {gpr: datareg} if !{cnd: condreg} => 0x30`8 @ 1`1 @ {cnd} @ {gpr}
+	jmp ip {gpr: addrreg} if  {cnd: condreg} => 0x31`8 @ 0`1 @ {cnd} @ {gpr}
+	jmp ip {gpr: addrreg} if !{cnd: condreg} => 0x31`8 @ 1`1 @ {cnd} @ {gpr}
+}
+
+;               |         
+; _15_12_11____8|7______0_
+; | imm | tgt.g | opcode |
+; |_____|_______|________|
+;               |         
+
+#ruledef native_hgi {
 	add {gpr: datareg} {imm: u5} => {
 		assert(imm >= 1 && imm <= 16)
-		0x32`8 @ {gpr} @ (imm-1)`4
+		0x32`8 @ (imm-1)`4 @ {gpr}
 	}
 	add {gpr: addrreg} {imm: u5} => {
 		assert(imm >= 1 && imm <= 16)
-		0x33`8 @ {gpr} @ (imm-1)`4
+		0x33`8 @ (imm-1)`4 @ {gpr}
 	}
 	sub {gpr: datareg} {imm: u5} => {
 		assert(imm >= 1 && imm <= 16)
-		0x34`8 @ {gpr} @ (imm-1)`4
+		0x34`8 @ (imm-1)`4 @ {gpr}
 	}
 	sub {gpr: addrreg} {imm: u5} => {
 		assert(imm >= 1 && imm <= 16)
-		0x35`8 @ {gpr} @ (imm-1)`4
+		0x35`8 @ (imm-1)`4 @ {gpr}
 	}
 
 	bl  {gpr: datareg} {imm: u5} => {
 		assert(imm >= 1 && imm <= 16)
-		0x36`8 @ {gpr} @ (imm-1)`4
+		0x36`8 @ (imm-1)`4 @ {gpr}
 	}
 	bru {gpr: datareg} {imm: u5} => {
 		assert(imm >= 1 && imm <= 16)
-		0x37`8 @ {gpr} @ (imm-1)`4
+		0x37`8 @ (imm-1)`4 @ {gpr}
 	}
 	brs {gpr: datareg} {imm: u5} => {
 		assert(imm >= 2 && imm <= 17)
-		0x38`8 @ {gpr} @ (imm-2)`4
+		0x38`8 @ (imm-2)`4 @ {gpr}
 	}
 }
 
-#ruledef word_gpr_gpr_imm {
-	add {dst: datareg} {src: datareg}  {imm: s16} => asm {pad} @ 0x39 @ {dst} @ {src} @ le(imm)
-	add {dst: addrreg} {src: addrreg}  {imm: s16} => asm {pad} @ 0x3A @ {dst} @ {src} @ le(imm)
-	add {dst: datareg} {src: datareg} ^{imm: s16} => asm {pad} @ 0x3B @ {dst} @ {src} @ le(imm)
-	add {dst: addrreg} {src: addrreg} ^{imm: s16} => asm {pad} @ 0x3C @ {dst} @ {src} @ le(imm)
+; ---------------------------------------------------------------------------- ;
 
-	and {dst: datareg} {src: datareg}  {imm: u16} => asm {pad} @ 0x3D @ {dst} @ {src} @ le(imm)
-	and {dst: datareg} {src: datareg} ^{imm: u16} => asm {pad} @ 0x3E @ {dst} @ {src} @ le(imm)
-	ior {dst: datareg} {src: datareg}  {imm: u16} => asm {pad} @ 0x3F @ {dst} @ {src} @ le(imm)
-	ior {dst: datareg} {src: datareg} ^{imm: u16} => asm {pad} @ 0x40 @ {dst} @ {src} @ le(imm)
-	xor {dst: datareg} {src: datareg}  {imm: u16} => asm {pad} @ 0x41 @ {dst} @ {src} @ le(imm)
-	xor {dst: datareg} {src: datareg} ^{imm: u16} => asm {pad} @ 0x42 @ {dst} @ {src} @ le(imm)
+;       |               |         
+; _31_16|15___12_11____8|7______0_
+; | imm | src.g | tgt.g | opcode |
+; |_____|_______|_______|________|
+;       |               |         
 
-	in  {tgt: datareg} {addr: datareg}  {imm: s16} => asm {pad} @ 0x43 @ {tgt} @ {addr} @ le(imm)
-	out {tgt: datareg} {addr: datareg}  {imm: s16} => asm {pad} @ 0x44 @ {tgt} @ {addr} @ le(imm)
+#ruledef native_wggi {
+	add {dst: datareg} {src: datareg}  {imm: s16} => asm {pad} @ 0x39 @ {src} @ {dst} @ le(imm)
+	add {dst: addrreg} {src: addrreg}  {imm: s16} => asm {pad} @ 0x3A @ {src} @ {dst} @ le(imm)
+	add {dst: datareg} {src: datareg} ^{imm: s16} => asm {pad} @ 0x3B @ {src} @ {dst} @ le(imm)
+	add {dst: addrreg} {src: addrreg} ^{imm: s16} => asm {pad} @ 0x3C @ {src} @ {dst} @ le(imm)
+
+	and {dst: datareg} {src: datareg}  {imm: u16} => asm {pad} @ 0x3D @ {src} @ {dst} @ le(imm)
+	and {dst: datareg} {src: datareg} ^{imm: u16} => asm {pad} @ 0x3E @ {src} @ {dst} @ le(imm)
+	ior {dst: datareg} {src: datareg}  {imm: u16} => asm {pad} @ 0x3F @ {src} @ {dst} @ le(imm)
+	ior {dst: datareg} {src: datareg} ^{imm: u16} => asm {pad} @ 0x40 @ {src} @ {dst} @ le(imm)
+	xor {dst: datareg} {src: datareg}  {imm: u16} => asm {pad} @ 0x41 @ {src} @ {dst} @ le(imm)
+	xor {dst: datareg} {src: datareg} ^{imm: u16} => asm {pad} @ 0x42 @ {src} @ {dst} @ le(imm)
+
+	in  {tgt: datareg} {addr: datareg}  {imm: s16} => asm {pad} @ 0x43 @ {addr} @ {tgt} @ le(imm)
+	out {tgt: datareg} {addr: datareg}  {imm: s16} => asm {pad} @ 0x44 @ {addr} @ {tgt} @ le(imm)
 }
 
-#ruledef word_cond_gpr_imm {
-	jmp    {gpr: datareg} {imm: s16} if  {cnd: condreg} => asm {pad} @ 0x45`8 @ {gpr} @ 0`1 @ {cnd} @ le(imm)
-	jmp    {gpr: datareg} {imm: s16} if !{cnd: condreg} => asm {pad} @ 0x45`8 @ {gpr} @ 1`1 @ {cnd} @ le(imm)
-	jmp    {gpr: addrreg} {imm: s16} if  {cnd: condreg} => asm {pad} @ 0x46`8 @ {gpr} @ 0`1 @ {cnd} @ le(imm)
-	jmp    {gpr: addrreg} {imm: s16} if !{cnd: condreg} => asm {pad} @ 0x46`8 @ {gpr} @ 1`1 @ {cnd} @ le(imm)
-	jmp ip {gpr: datareg} {imm: s16} if  {cnd: condreg} => asm {pad} @ 0x47`8 @ {gpr} @ 0`1 @ {cnd} @ le(imm)
-	jmp ip {gpr: datareg} {imm: s16} if !{cnd: condreg} => asm {pad} @ 0x47`8 @ {gpr} @ 1`1 @ {cnd} @ le(imm)
-	jmp ip {gpr: addrreg} {imm: s16} if  {cnd: condreg} => asm {pad} @ 0x48`8 @ {gpr} @ 0`1 @ {cnd} @ le(imm)
-	jmp ip {gpr: addrreg} {imm: s16} if !{cnd: condreg} => asm {pad} @ 0x48`8 @ {gpr} @ 1`1 @ {cnd} @ le(imm)
+;       |                     |         
+; _31_16|15____14___12_11____8|7______0_
+; | imm | neg | tgt.c | tgt.g | opcode |
+; |_____|_____|_______|_______|________|
+;       |                     |         
+
+#ruledef native_wcgi {
+	jmp    {gpr: datareg} {imm: s16} if  {cnd: condreg} => asm {pad} @ 0x45`8 @ 0`1 @ {cnd} @ {gpr} @ le(imm)
+	jmp    {gpr: datareg} {imm: s16} if !{cnd: condreg} => asm {pad} @ 0x45`8 @ 1`1 @ {cnd} @ {gpr} @ le(imm)
+	jmp    {gpr: addrreg} {imm: s16} if  {cnd: condreg} => asm {pad} @ 0x46`8 @ 0`1 @ {cnd} @ {gpr} @ le(imm)
+	jmp    {gpr: addrreg} {imm: s16} if !{cnd: condreg} => asm {pad} @ 0x46`8 @ 1`1 @ {cnd} @ {gpr} @ le(imm)
+	jmp ip {gpr: datareg} {imm: s16} if  {cnd: condreg} => asm {pad} @ 0x47`8 @ 0`1 @ {cnd} @ {gpr} @ le(imm)
+	jmp ip {gpr: datareg} {imm: s16} if !{cnd: condreg} => asm {pad} @ 0x47`8 @ 1`1 @ {cnd} @ {gpr} @ le(imm)
+	jmp ip {gpr: addrreg} {imm: s16} if  {cnd: condreg} => asm {pad} @ 0x48`8 @ 0`1 @ {cnd} @ {gpr} @ le(imm)
+	jmp ip {gpr: addrreg} {imm: s16} if !{cnd: condreg} => asm {pad} @ 0x48`8 @ 1`1 @ {cnd} @ {gpr} @ le(imm)
 }
 
-#ruledef extras {
-	hlt => 0x00_00`16
-	pad => (pc & 2 != 0 ? 0x00_FF`16 : 0`0)
-}
+; ---------------------------------------------------------------------------- ;
 
 #ruledef pseudo {
 	jmp    {gpr: datareg} => asm { jmp    {gpr} if !c0 }
@@ -277,6 +319,8 @@
 		jmp at if !c0
 	}
 }
+
+; ---------------------------------------------------------------------------- ;
 
 #fn lenstr(str) => le(strlen(str)`32) @ str
 

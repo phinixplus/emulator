@@ -17,30 +17,30 @@ typedef union instruction {
 				uint16_t _padding;
 			} hs;
 			struct {
-				unsigned src_g : 4;
 				unsigned dst_g : 4;
+				unsigned src_g : 4;
 				uint16_t _padding;
 			} hgg;
 			struct {
+				unsigned tgt_g : 4;
 				unsigned tgt_c : 3;
 				unsigned neg : 1;
-				unsigned tgt_g : 4;
 				uint16_t _padding;
 			} hcg;
 			struct {
-				unsigned imm : 4;
 				unsigned tgt_g : 4;
+				unsigned imm : 4;
 				uint16_t _padding;
 			} hgi;
 			struct {
-				unsigned src_g : 4;
 				unsigned dst_g : 4;
+				unsigned src_g : 4;
 				uint16_t imm;
 			} wggi;
 			struct {
+				unsigned tgt_g : 4;
 				unsigned tgt_c : 3;
 				unsigned neg : 1;
-				unsigned tgt_g : 4;
 				uint16_t imm;
 			} wcgi;
 		};

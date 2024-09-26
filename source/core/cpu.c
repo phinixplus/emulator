@@ -58,16 +58,24 @@ const char addrreg_conv[][3] = {
 	"s6", "s7", "gp", "sp", "k0", "k1", "k2", "k3"
 };
 
-void cpu_reset(cpu_t *cpu, mem_t mem, io_t io) {
+void cpu_new(cpu_t *cpu, mem_t mem, io_t io) {
 	// Make sure the instruction formats union is packed correctly.
 	assert(sizeof(instruction_t) == sizeof(uint32_t));
 
-	cpu->steps = 0;
+	cpu->step_count = 0;
+	cpu->start_addr = 0;
+	cpu->last_ip = 0;
+
 	cpu->ip = 0, cpu->cond &= ~1;
 	for(unsigned i = 0; i<16; i++)
 		cpu->data[i] = cpu->addr[i] = 0;
-	if(mem != NULL) cpu->mem = mem;
-	if(io != NULL) cpu->io = io;
+
+	cpu->mem = mem, cpu->io = io;
+}
+
+void cpu_interrupt(cpu_t *cpu) {
+	cpu->last_ip = cpu->ip;
+	cpu->ip = cpu->start_addr;
 }
 
 bool cpu_execute(cpu_t *cpu) {
@@ -544,13 +552,13 @@ bool cpu_execute(cpu_t *cpu) {
 	}
 	cpu->cond &= 0xFE;
 	cpu->data[0] = 0;
-	cpu->steps++;
+	cpu->step_count++;
 	return true;
 }
 
 void cpu_print_state(cpu_t *cpu) {
 	char value[9] = {0};
-	fprintf(stderr, "---- Step: %lu ----\n", cpu->steps);
+	fprintf(stderr, "---- Step: %lu ----\n", cpu->step_count);
 	hex_string_of_length(value, cpu->ip, 8);
 	fprintf(stderr, "ip: %8s ", value);
 	hex_string_of_length(value, cpu->cond, 2);

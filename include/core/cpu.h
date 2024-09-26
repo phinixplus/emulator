@@ -8,7 +8,10 @@
 #include "io.h"
 
 typedef struct cpu {
-	uint64_t steps;
+	// Bookkeeping
+	uint64_t step_count;
+	uint32_t start_addr;
+	uint32_t last_ip;
 
 	// Architectural State
 	uint32_t ip;
@@ -24,7 +27,9 @@ typedef struct cpu {
 extern const char datareg_conv[][3];
 extern const char addrreg_conv[][3];
 
-void cpu_reset(cpu_t *cpu, mem_t memory, io_t io);
+void cpu_new(cpu_t *cpu, mem_t memory, io_t io);
+
+void cpu_interrupt(cpu_t *cpu);
 bool cpu_execute(cpu_t *cpu);
 void cpu_print_state(cpu_t *cpu);
 

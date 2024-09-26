@@ -31,7 +31,7 @@ void exit_as_sighandler(int sigid) {
 	exit(EXIT_FAILURE);
 }
 
-void *freq_counter_thread(void *cycle_count) {
+static void *freq_counter_thread(void *cycle_count) {
 	uint64_t *count = (uint64_t *) cycle_count;
 	uint64_t old_count = 0;
 	while(is_running()) {
@@ -81,7 +81,7 @@ int main(int argc, char **argv) {
 		assert(telnet_setup(io, 2323)); // Soon to be a thread too
 		if(options.show_freq) pthread_create(
 			&cleanup_registry.freq, NULL,
-			freq_counter_thread, &cpu.steps
+			freq_counter_thread, &cpu.step_count
 		);
 	}
 	// Revert the mask so that main thread gets to handle the signals
@@ -90,11 +90,11 @@ int main(int argc, char **argv) {
 	// Setup memory and CPU
 	mem_t mem = mem_new(options.file);
 	cleanup_registry.mem = mem;
-	cpu_reset(&cpu, mem, io);
+	cpu_new(&cpu, mem, io);
 
 	// Do cycles and print sate if verbose
 	do { if(options.verbose) cpu_print_state(&cpu); } while(cpu_execute(&cpu));
-	fprintf(stderr, "CPU halted after %lu step(s).\n", cpu.steps);
+	fprintf(stderr, "CPU halted after %lu step(s).\n", cpu.step_count);
 
 	exit(EXIT_SUCCESS);
 }

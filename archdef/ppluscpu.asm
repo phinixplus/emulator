@@ -319,16 +319,3 @@
 		jmp at if !c0
 	}
 }
-
-; ---------------------------------------------------------------------------- ;
-
-#fn lenstr(str) => le(strlen(str)`32) @ str
-
-#bankdef main {
-	#addr 0x00000000
-	#size 0x400
-	#outp 0
-	#bits 8
-}
-
-#bank main

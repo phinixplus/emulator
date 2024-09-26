@@ -16,7 +16,7 @@ function assemble {
 	customasm --version >/dev/null || error "customasm"
 
 	mkdir -p "$bindir"
-	customasm "test/pplusdef.asm" "$1" -f logisim8 -o "$bindir/mem.hex"
+	customasm "archdef/archdef_emu.asm" "$1" -f logisim8 -o "$bindir/mem.hex"
 }
 
 function build {

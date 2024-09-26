@@ -23,5 +23,6 @@ Finally, run your assembly program using the command
 Currently, the PHINIX+ assembly is defined using the
 [CustomASM](https://github.com/hlorenzi/customasm) utility.
 The list of available instructions and their operands are declared in
-[pplusdef.asm](pplusdef.asm). To learn more about the PHINIX+ system
-architecture, read the [documentation](https://github.com/phinixplus/docs).
+[archdef/ppluscpu.asm](archdef/ppluscpu.asm). To learn more
+about the PHINIX+ system architecture, read the
+[documentation](https://github.com/phinixplus/docs).

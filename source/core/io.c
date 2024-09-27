@@ -11,6 +11,8 @@
 typedef struct io_registry {
 	io_callback_t read_callbacks[(1 << IO_ADDR_BITS)];
 	io_callback_t write_callbacks[(1 << IO_ADDR_BITS)];
+	void *read_contexts[(1 << IO_ADDR_BITS)];
+	void *write_contexts[(1 << IO_ADDR_BITS)];
 } io_registry_t;
 
 io_t io_new(void) {
@@ -22,54 +24,92 @@ void io_del(io_t io) {
 	free(io);
 }
 
-bool io_attach_read(io_t io, uint16_t port, io_callback_t callback) {
-	io_callback_t *spot = &io->read_callbacks[port];
-	if(*spot != NULL) return false;
-	return *spot = callback, true;
+bool io_attach_read(
+	io_t io, uint16_t port,
+	io_callback_t callback,
+	void *context
+) {
+	port &= (1 << IO_ADDR_BITS) - 1;
+	if(io->read_callbacks[port] != NULL) return false;
+
+	io->read_callbacks[port] = callback;
+	io->read_contexts[port] = context;
+	return true;
 }
 
-bool io_detach_read(io_t io, uint16_t port, io_callback_t *ret_callback) {
-	io_callback_t *spot = &io->read_callbacks[port];
-	if(*spot == NULL) return false;
-	if(ret_callback != NULL) *ret_callback = *spot;
-	return *spot = NULL, true;
+bool io_detach_read(
+	io_t io, uint16_t port,
+	io_callback_t *ret_callback,
+	void **ret_context
+) {
+	port &= (1 << IO_ADDR_BITS) - 1;
+	if(io->read_callbacks[port] == NULL) return false;
+
+	if(ret_callback != NULL) *ret_callback = io->read_callbacks[port];
+	if(ret_context != NULL) *ret_context = io->read_contexts[port];
+	io->read_callbacks[port] = NULL;
+	io->read_contexts[port] = NULL;
+	return true;
 }
 
-bool io_attach_write(io_t io, uint16_t port, io_callback_t callback) {
-	io_callback_t *spot = &io->write_callbacks[port];
-	if(*spot != NULL) return false;
-	return *spot = callback, true;
+bool io_attach_write(
+	io_t io, uint16_t port,
+	io_callback_t callback,
+	void *context
+) {
+	port &= (1 << IO_ADDR_BITS) - 1;
+	if(io->write_callbacks[port] != NULL) return false;
+
+	io->write_callbacks[port] = callback;
+	io->write_contexts[port] = context;
+	return true;
 }
 
-bool io_detach_write(io_t io, uint16_t port, io_callback_t *ret_callback) {
-	io_callback_t *spot = &io->write_callbacks[port];
-	if(*spot == NULL) return false;
-	if(ret_callback != NULL) *ret_callback = *spot;
-	return *spot = NULL, true;
+bool io_detach_write(
+	io_t io, uint16_t port,
+	io_callback_t *ret_callback,
+	void **ret_context
+) {
+	port &= (1 << IO_ADDR_BITS) - 1;
+	if(io->write_callbacks[port] == NULL) return false;
+
+	if(ret_callback != NULL) *ret_callback = io->write_callbacks[port];
+	if(ret_context != NULL) *ret_context = io->write_contexts[port];
+	io->write_callbacks[port] = NULL;
+	io->write_contexts[port] = NULL;
+	return true;
 }
 
 uint32_t io_read(io_t io, uint16_t port) {
-	uint32_t value = 0;
+	port &= (1 << IO_ADDR_BITS) - 1;
+
 	io_callback_t callback = io->read_callbacks[port];
+	void *context = io->read_contexts[port];
 	if(callback == NULL) {
 		char hexbuf[9] = {0};
 		hex_string_of_length(hexbuf, port, (IO_ADDR_BITS - 1) / 4 + 1);
 		fprintf(stderr, "Attempt to read from unassigned port %sh\n", hexbuf);
 		return 0;
 	}
-	callback(false, &value);
+
+	uint32_t value = 0;
+	callback(false, &value, context);
 	return value;
 }
 
 void io_write(io_t io, uint16_t port, uint32_t value) {
+	port &= (1 << IO_ADDR_BITS) - 1;
+
 	io_callback_t callback = io->write_callbacks[port];
+	void *context = io->write_contexts[port];
 	if(callback == NULL) {
 		char hexbuf[9] = {0};
 		hex_string_of_length(hexbuf, port, (IO_ADDR_BITS - 1) / 4 + 1);
 		fprintf(stderr, "Attempt to write to unassigned port %sh\n", hexbuf);
 		return;
 	}
-	callback(true, &value);
+
+	callback(true, &value, context);
 }
 
 // IO FIFO Section //

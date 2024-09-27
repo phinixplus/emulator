@@ -19,16 +19,17 @@ static struct {
 	} read_state;
 } state;
 
-static void telnet_callback(bool rw_select, uint32_t *data) {
+static void telnet_callback(bool rw_select, uint32_t *rw_data, void *context) {
+	(void) context;
 	if(state.client_socket == -1) {
-		if(!rw_select) *data = 0xFFFFFFFF;
+		if(!rw_select) *rw_data = 0xFFFFFFFF;
 		return;
 	}
 
 	uint8_t character;
 	if(rw_select) {
 		ssize_t ret, req;
-		character = *data & 0xFF;
+		character = *rw_data & 0xFF;
 		if(character == 0xFF) ret = write(state.client_socket, "\xff\xff", req = 2);
 		else if(character == '\r') ret = write(state.client_socket, "\r\0", req = 2);
 		else ret = write(state.client_socket, &character, req = 1);
@@ -38,7 +39,7 @@ static void telnet_callback(bool rw_select, uint32_t *data) {
 
 	while(true) {
 		poll(&state.poll_descriptor, 1, 0);
-		if(!(state.poll_descriptor.revents & POLLIN)) { *data = 0x80000000; return; }
+		if(!(state.poll_descriptor.revents & POLLIN)) { *rw_data = 0x80000000; return; }
 		if(read(state.client_socket, &character, 1) != 1) exit(EXIT_FAILURE);
 
 		// This is what Big Telnet demands you do to merely ignore the negotiation
@@ -79,7 +80,7 @@ static void telnet_callback(bool rw_select, uint32_t *data) {
 
 		if(state.read_state == EXIT) {
 			state.read_state = START;
-			*data = character;
+			*rw_data = character;
 			return;
 		}
 	}
@@ -101,8 +102,8 @@ bool telnet_setup(io_t io, uint16_t net_port) {
 	unsigned char preamble[] = { 255, 251, 0, 255, 251, 1, 255, 251, 3 };
 	if(write(state.client_socket, preamble, sizeof preamble) != sizeof preamble) goto fail2;
 
-	if(!io_attach_read(io, 1, telnet_callback)) goto fail2;
-	if(!io_attach_write(io, 1, telnet_callback)) goto fail2;
+	if(!io_attach_read(io, 1, telnet_callback, NULL)) goto fail2;
+	if(!io_attach_write(io, 1, telnet_callback, NULL)) goto fail2;
 
 	state.poll_descriptor.fd = state.client_socket;
 	state.poll_descriptor.events = POLLIN;
@@ -121,7 +122,7 @@ void telnet_close(io_t io) {
 	if(state.client_socket != -1) {
 		close(state.client_socket);
 		state.client_socket = -1;
-		io_detach_read(io, 1, NULL);
-		io_detach_write(io, 1, NULL);
+		io_detach_read(io, 1, NULL, NULL);
+		io_detach_write(io, 1, NULL, NULL);
 	}
 }

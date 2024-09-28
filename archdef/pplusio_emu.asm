@@ -1,2 +1,3 @@
-dbgcon = 0
-telnet = 1
+isrloc = 0
+dbgcon = 1
+telnet = 2

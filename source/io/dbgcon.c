@@ -31,8 +31,8 @@ void dbgcon_callback(bool rw_select, uint32_t *rw_data, void *context) {
 bool dbgcon_setup(io_t io) {
 	if(state.init) return false;
 	state.fifo = io_fifo_new();
-	state.init = io_attach_read(io, 0, dbgcon_callback, NULL);
-	state.init &= io_attach_write(io, 0, dbgcon_callback, NULL);
+	state.init = io_attach_read(io, 1, dbgcon_callback, NULL);
+	state.init &= io_attach_write(io, 1, dbgcon_callback, NULL);
 	if(!state.init) return false;
 	pthread_create(&state.thread, NULL, dbgcon_thread, NULL);
 	return true;
@@ -43,7 +43,7 @@ bool dbgcon_close(io_t io) {
 	state.init = false;
 	pthread_join(state.thread, NULL);
 	io_fifo_del(state.fifo);
-	assert(io_detach_read(io, 0, NULL, NULL));
-	assert(io_detach_write(io, 0, NULL, NULL));
+	assert(io_detach_read(io, 1, NULL, NULL));
+	assert(io_detach_write(io, 1, NULL, NULL));
 	return true;
 }

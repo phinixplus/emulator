@@ -13,11 +13,12 @@ typedef union instruction {
 		uint8_t opcode;
 		union {
 			struct {
-				uint8_t funct;
+				unsigned tgt_g : 4;
+				unsigned funct : 4;
 				uint16_t _padding;
-			} hs;
+			} hg;
 			struct {
-				unsigned dst_g : 4;
+				unsigned tgt_g : 4;
 				unsigned src_g : 4;
 				uint16_t _padding;
 			} hgg;
@@ -33,7 +34,7 @@ typedef union instruction {
 				uint16_t _padding;
 			} hgi;
 			struct {
-				unsigned dst_g : 4;
+				unsigned tgt_g : 4;
 				unsigned src_g : 4;
 				uint16_t imm;
 			} wggi;
@@ -58,27 +59,37 @@ const char addrreg_conv[][3] = {
 	"s6", "s7", "gp", "sp", "k0", "k1", "k2", "k3"
 };
 
-void cpu_new(cpu_t *cpu, mem_t mem, io_t io) {
+void cpu_new(cpu_t *cpu, mem_t mem, io_t io, ipm_t *ipm) {
 	// Make sure the instruction formats union is packed correctly.
 	assert(sizeof(instruction_t) == sizeof(uint32_t));
 
 	cpu->step_count = 0;
 	cpu->start_addr = 0;
-	cpu->last_ip = 0;
+	cpu->irq_pending = false;
 
-	cpu->ip = 0, cpu->cond &= ~1;
+	cpu->ip = cpu->jp = 0;
+	cpu->cond &= ~1;
 	for(unsigned i = 0; i<16; i++)
 		cpu->data[i] = cpu->addr[i] = 0;
 
-	cpu->mem = mem, cpu->io = io;
+	cpu->mem = mem, cpu->io = io, cpu->ipm = ipm;
 }
 
 void cpu_interrupt(cpu_t *cpu) {
-	cpu->last_ip = cpu->ip;
-	cpu->ip = cpu->start_addr;
+	cpu->irq_pending = true;
+}
+
+static void handle_interrupt(cpu_t *cpu) {
+	if(cpu->irq_pending) {
+		cpu->jp = cpu->ip;
+		cpu->ip = cpu->start_addr;
+		ipm_set_privilege(cpu, true);
+		cpu->irq_pending = false;
+	}
 }
 
 bool cpu_execute(cpu_t *cpu) {
+	if(!ipm_check_privilege(cpu, false)) handle_interrupt(cpu);
 	uint32_t inst_word = mem_fetch_word(cpu->mem, cpu->ip);
 	instruction_t instr = {inst_word};
 
@@ -86,118 +97,142 @@ bool cpu_execute(cpu_t *cpu) {
 	uint32_t tmpg1, tmpg2;
 	char hexbuf[9] = {0};
 	switch(instr.opcode) {
-		case 0x00: // PAD, HLT
-			if(instr.hs.funct == 0xFF)
-				return cpu->ip += 2, cpu_execute(cpu);
-			else return false;
+		case 0x00: switch(instr.hg.funct) {
+			case 0x0: // HLT
+				return false;
+			case 0x1: // RSM
+				cpu->ip = cpu->jp;
+				ipm_set_privilege(cpu, false);
+				break;
+			case 0x2: // LJP
+				cpu->jp = cpu->data[instr.hg.tgt_g];
+				cpu->ip += 2;
+				break;
+			case 0x3: // SJP
+				cpu->data[instr.hg.tgt_g] = cpu->jp;
+				cpu->ip += 2;
+				break;
+			case 0x4: case 0x5: case 0x6:
+			case 0x7: case 0x8: case 0x9: case 0xA:
+			case 0xB: case 0xC: case 0xD: case 0xE:
+				hex_string_of_length(hexbuf, cpu->ip, 8);
+				fprintf(stderr,
+					"Encountered invalid opcode 00,%xh at %8sh.\n",
+					instr.hg.funct, hexbuf
+				);
+				return false;
+			case 0xF: // PAD
+				cpu->ip += 2;
+				return cpu_execute(cpu);
+		} break;
 		case 0x01: // MOVxx
-			cpu->data[instr.hgg.dst_g] = cpu->data[instr.hgg.src_g];
+			cpu->data[instr.hgg.tgt_g] = cpu->data[instr.hgg.src_g];
 			cpu->ip += 2;
 			break;
 		case 0x02: // MOVxy
-			cpu->data[instr.hgg.dst_g] = cpu->addr[instr.hgg.src_g];
+			cpu->data[instr.hgg.tgt_g] = cpu->addr[instr.hgg.src_g];
 			cpu->ip += 2;
 			break;
 		case 0x03: // MOVyx
-			cpu->addr[instr.hgg.dst_g] = cpu->data[instr.hgg.src_g];
+			cpu->addr[instr.hgg.tgt_g] = cpu->data[instr.hgg.src_g];
 			cpu->ip += 2;
 			break;
 		case 0x04: // MOVyy
-			cpu->addr[instr.hgg.dst_g] = cpu->addr[instr.hgg.src_g];
+			cpu->addr[instr.hgg.tgt_g] = cpu->addr[instr.hgg.src_g];
 			cpu->ip += 2;
 			break;
 		case 0x05: // ADDrx
-			cpu->data[instr.hgg.dst_g] += cpu->data[instr.hgg.src_g];
+			cpu->data[instr.hgg.tgt_g] += cpu->data[instr.hgg.src_g];
 			cpu->ip += 2;
 			break;
 		case 0x06: // ADDry
-			cpu->addr[instr.hgg.dst_g] += cpu->addr[instr.hgg.src_g];
+			cpu->addr[instr.hgg.tgt_g] += cpu->addr[instr.hgg.src_g];
 			cpu->ip += 2;
 			break;
 		case 0x07: // SUBrx
-			cpu->data[instr.hgg.dst_g] -= cpu->data[instr.hgg.src_g];
+			cpu->data[instr.hgg.tgt_g] -= cpu->data[instr.hgg.src_g];
 			cpu->ip += 2;
 			break;
 		case 0x08: // SUBry
-			cpu->addr[instr.hgg.dst_g] -= cpu->addr[instr.hgg.src_g];
+			cpu->addr[instr.hgg.tgt_g] -= cpu->addr[instr.hgg.src_g];
 			cpu->ip += 2;
 			break;
 		case 0x09: // ANDrx
-			cpu->data[instr.hgg.dst_g] &= cpu->data[instr.hgg.src_g];
+			cpu->data[instr.hgg.tgt_g] &= cpu->data[instr.hgg.src_g];
 			cpu->ip += 2;
 			break;
 		case 0x0A: // NNDrx
-			tmpg1 = cpu->data[instr.hgg.dst_g] & cpu->data[instr.hgg.src_g];
-			cpu->data[instr.hgg.dst_g] = ~tmpg1;
+			tmpg1 = cpu->data[instr.hgg.tgt_g] & cpu->data[instr.hgg.src_g];
+			cpu->data[instr.hgg.tgt_g] = ~tmpg1;
 			cpu->ip += 2;
 			break;
 		case 0x0B: // IORrx
-			cpu->data[instr.hgg.dst_g] |= cpu->data[instr.hgg.src_g];
+			cpu->data[instr.hgg.tgt_g] |= cpu->data[instr.hgg.src_g];
 			cpu->ip += 2;
 			break;
 		case 0x0C: // NORrx
-			tmpg1 = cpu->data[instr.hgg.dst_g] | cpu->data[instr.hgg.src_g];
-			cpu->data[instr.hgg.dst_g] = ~tmpg1;
+			tmpg1 = cpu->data[instr.hgg.tgt_g] | cpu->data[instr.hgg.src_g];
+			cpu->data[instr.hgg.tgt_g] = ~tmpg1;
 			cpu->ip += 2;
 			break;
 		case 0x0D: // XORrx
-			cpu->data[instr.hgg.dst_g] ^= cpu->data[instr.hgg.src_g];
+			cpu->data[instr.hgg.tgt_g] ^= cpu->data[instr.hgg.src_g];
 			cpu->ip += 2;
 			break;
 		case 0x0E: // SLx
-			cpu->data[instr.hgg.dst_g] = cpu->data[instr.hgg.src_g] << 1;
+			cpu->data[instr.hgg.tgt_g] = cpu->data[instr.hgg.src_g] << 1;
 			cpu->ip += 2;
 			break;
 		case 0x0F: // SRUx
-			cpu->data[instr.hgg.dst_g] = cpu->data[instr.hgg.src_g] >> 1;
+			cpu->data[instr.hgg.tgt_g] = cpu->data[instr.hgg.src_g] >> 1;
 			cpu->ip += 2;
 			break;
 		case 0x10: // SRSx
 			tmpg1 = (uint32_t)(((int32_t)cpu->data[instr.hgg.src_g]) >> 1);
-			cpu->data[instr.hgg.dst_g] = tmpg1;
+			cpu->data[instr.hgg.tgt_g] = tmpg1;
 			cpu->ip += 2;
 			break;
 		case 0x11: // BLrx
-			cpu->data[instr.hgg.dst_g] <<= cpu->data[instr.hgg.src_g] & 0x1F;
+			cpu->data[instr.hgg.tgt_g] <<= cpu->data[instr.hgg.src_g] & 0x1F;
 			cpu->ip += 2;
 			break;
 		case 0x12: // BRUrx
-			cpu->data[instr.hgg.dst_g] >>= cpu->data[instr.hgg.src_g] & 0x1F;
+			cpu->data[instr.hgg.tgt_g] >>= cpu->data[instr.hgg.src_g] & 0x1F;
 			cpu->ip += 2;
 			break;
 		case 0x13: // BRSrx
 			tmpg1 = cpu->data[instr.hgg.src_g] & 0x1F;
-			tmpg2 = (uint32_t)(((int32_t)cpu->data[instr.hgg.dst_g]) >> tmpg1);
-			cpu->data[instr.hgg.dst_g] = tmpg2;
+			tmpg2 = (uint32_t)(((int32_t)cpu->data[instr.hgg.tgt_g]) >> tmpg1);
+			cpu->data[instr.hgg.tgt_g] = tmpg2;
 			cpu->ip += 2;
 			break;
 		case 0x14: // LBUrx
 			tmpg1 = mem_fetch_byte(cpu->mem, cpu->data[instr.hgg.src_g]);
-			cpu->data[instr.hgg.dst_g] = tmpg1;
+			cpu->data[instr.hgg.tgt_g] = tmpg1;
 			cpu->ip += 2;
 			break;
 		case 0x15: // LBUry
 			tmpg1 = mem_fetch_byte(cpu->mem, cpu->addr[instr.hgg.src_g]);
-			cpu->data[instr.hgg.dst_g] = tmpg1;
+			cpu->data[instr.hgg.tgt_g] = tmpg1;
 			cpu->ip += 2;
 			break;
 		case 0x16: // LBSrx
 			tmpg1 = mem_fetch_byte(cpu->mem, cpu->data[instr.hgg.src_g]);
 			tmpg1 |= (tmpg1 & 1 << 7) ? 0xFFFFFF00 : 0;
-			cpu->data[instr.hgg.dst_g] = tmpg1;
+			cpu->data[instr.hgg.tgt_g] = tmpg1;
 			cpu->ip += 2;
 			break;
 		case 0x17: // LBSry
 			tmpg1 = mem_fetch_byte(cpu->mem, cpu->addr[instr.hgg.src_g]);
 			tmpg1 |= (tmpg1 & 1 << 7) ? 0xFFFFFF00 : 0;
-			cpu->data[instr.hgg.dst_g] = tmpg1;
+			cpu->data[instr.hgg.tgt_g] = tmpg1;
 			cpu->ip += 2;
 			break;
 		case 0x18: // SBrx
 			mem_store_byte(
 				cpu->mem,
 				cpu->data[instr.hgg.src_g],
-				(uint8_t)(cpu->data[instr.hgg.dst_g] & 0x000000FF)
+				(uint8_t)(cpu->data[instr.hgg.tgt_g] & 0x000000FF)
 			);
 			cpu->ip += 2;
 			break;
@@ -205,37 +240,37 @@ bool cpu_execute(cpu_t *cpu) {
 			mem_store_byte(
 				cpu->mem,
 				cpu->addr[instr.hgg.src_g],
-				(uint8_t)(cpu->data[instr.hgg.dst_g] & 0x000000FF)
+				(uint8_t)(cpu->data[instr.hgg.tgt_g] & 0x000000FF)
 			);
 			cpu->ip += 2;
 			break;
 		case 0x1A: // LHUrx
 			tmpg1 = mem_fetch_half(cpu->mem, cpu->data[instr.hgg.src_g]);
-			cpu->data[instr.hgg.dst_g] = tmpg1;
+			cpu->data[instr.hgg.tgt_g] = tmpg1;
 			cpu->ip += 2;
 			break;
 		case 0x1B: // LHUry
 			tmpg1 = mem_fetch_half(cpu->mem, cpu->addr[instr.hgg.src_g]);
-			cpu->data[instr.hgg.dst_g] = tmpg1;
+			cpu->data[instr.hgg.tgt_g] = tmpg1;
 			cpu->ip += 2;
 			break;
 		case 0x1C: // LHSrx
 			tmpg1 = mem_fetch_half(cpu->mem, cpu->data[instr.hgg.src_g]);
 			tmpg1 |= (tmpg1 & 1 << 7) ? 0xFFFFFF00 : 0;
-			cpu->data[instr.hgg.dst_g] = tmpg1;
+			cpu->data[instr.hgg.tgt_g] = tmpg1;
 			cpu->ip += 2;
 			break;
 		case 0x1D: // LHSry
 			tmpg1 = mem_fetch_half(cpu->mem, cpu->addr[instr.hgg.src_g]);
 			tmpg1 |= (tmpg1 & 1 << 7) ? 0xFFFFFF00 : 0;
-			cpu->data[instr.hgg.dst_g] = tmpg1;
+			cpu->data[instr.hgg.tgt_g] = tmpg1;
 			cpu->ip += 2;
 			break;
 		case 0x1E: // SHrx
 			mem_store_half(
 				cpu->mem,
 				cpu->data[instr.hgg.src_g],
-				(uint16_t)(cpu->data[instr.hgg.dst_g] & 0x0000FFFF)
+				(uint16_t)(cpu->data[instr.hgg.tgt_g] & 0x0000FFFF)
 			);
 			cpu->ip += 2;
 			break;
@@ -243,25 +278,25 @@ bool cpu_execute(cpu_t *cpu) {
 			mem_store_half(
 				cpu->mem,
 				cpu->addr[instr.hgg.src_g],
-				(uint16_t)(cpu->data[instr.hgg.dst_g] & 0x0000FFFF)
+				(uint16_t)(cpu->data[instr.hgg.tgt_g] & 0x0000FFFF)
 			);
 			cpu->ip += 2;
 			break;
 		case 0x20: // LWrx
 			tmpg1 = mem_fetch_word(cpu->mem, cpu->data[instr.hgg.src_g]);
-			cpu->data[instr.hgg.dst_g] = tmpg1;
+			cpu->data[instr.hgg.tgt_g] = tmpg1;
 			cpu->ip += 2;
 			break;
 		case 0x21: // LWry
 			tmpg1 = mem_fetch_word(cpu->mem, cpu->addr[instr.hgg.src_g]);
-			cpu->data[instr.hgg.dst_g] = tmpg1;
+			cpu->data[instr.hgg.tgt_g] = tmpg1;
 			cpu->ip += 2;
 			break;
 		case 0x22: // SWrx
 			mem_store_word(
 				cpu->mem,
 				cpu->data[instr.hgg.src_g],
-				cpu->data[instr.hgg.dst_g]
+				cpu->data[instr.hgg.tgt_g]
 			);
 			cpu->ip += 2;
 			break;
@@ -269,24 +304,24 @@ bool cpu_execute(cpu_t *cpu) {
 			mem_store_word(
 				cpu->mem,
 				cpu->addr[instr.hgg.src_g],
-				cpu->data[instr.hgg.dst_g]
+				cpu->data[instr.hgg.tgt_g]
 			);
 			cpu->ip += 2;
 			break;
 		case 0x24: // JNLrxx
-			cpu->data[instr.hgg.dst_g] = cpu->ip + 2;
+			cpu->data[instr.hgg.tgt_g] = cpu->ip + 2;
 			cpu->ip = cpu->data[instr.hgg.src_g];
 			break;
 		case 0x25: // JNLrxy
-			cpu->data[instr.hgg.dst_g] = cpu->ip + 2;
+			cpu->data[instr.hgg.tgt_g] = cpu->ip + 2;
 			cpu->ip = cpu->addr[instr.hgg.src_g];
 			break;
 		case 0x26: // JNLryx
-			cpu->addr[instr.hgg.dst_g] = cpu->ip + 2;
+			cpu->addr[instr.hgg.tgt_g] = cpu->ip + 2;
 			cpu->ip = cpu->data[instr.hgg.src_g];
 			break;
 		case 0x27: // JNLryy
-			cpu->addr[instr.hgg.dst_g] = cpu->ip + 2;
+			cpu->addr[instr.hgg.tgt_g] = cpu->ip + 2;
 			cpu->ip = cpu->addr[instr.hgg.src_g];
 			break;
 		case 0x28: // TZx
@@ -389,76 +424,76 @@ bool cpu_execute(cpu_t *cpu) {
 			tmpg1 = (uint32_t)instr.wggi.imm;
 			if((tmpg1 & (1 << 15)) != 0) tmpg1 |= 0xFFFF0000;
 			tmpg1 += cpu->data[instr.wggi.src_g];
-			cpu->data[instr.wggi.dst_g] = tmpg1;
+			cpu->data[instr.wggi.tgt_g] = tmpg1;
 			cpu->ip += 4;
 			break;
 		case 0x3A: // ADDly
 			tmpg1 = (uint32_t)instr.wggi.imm;
 			if((tmpg1 & (1 << 15)) != 0) tmpg1 |= 0xFFFF0000;
 			tmpg1 += cpu->data[instr.wggi.src_g];
-			cpu->addr[instr.wggi.dst_g] = tmpg1;
+			cpu->addr[instr.wggi.tgt_g] = tmpg1;
 			cpu->ip += 4;
 			break;
 		case 0x3B: // ADDhx
 			tmpg1 = ((uint32_t)instr.wggi.imm) << 16;
 			tmpg1 += cpu->data[instr.wggi.src_g];
-			cpu->data[instr.wggi.dst_g] = tmpg1;
+			cpu->data[instr.wggi.tgt_g] = tmpg1;
 			cpu->ip += 4;
 			break;
 		case 0x3C: // ADDhy
 			tmpg1 = ((uint32_t)instr.wggi.imm) << 16;
 			tmpg1 += cpu->addr[instr.wggi.src_g];
-			cpu->addr[instr.wggi.dst_g] = tmpg1;
+			cpu->addr[instr.wggi.tgt_g] = tmpg1;
 			cpu->ip += 4;
 			break;
 		case 0x3D: // ANDl
 			tmpg1 = (uint32_t)instr.wggi.imm;
 			tmpg1 &= cpu->data[instr.wggi.src_g];
-			cpu->data[instr.wggi.dst_g] = tmpg1;
+			cpu->data[instr.wggi.tgt_g] = tmpg1;
 			cpu->ip += 4;
 			break;
 		case 0x3E: // ANDh
 			tmpg1 = (((uint32_t)instr.wggi.imm) << 16) | 0xFFFF;
 			tmpg1 &= cpu->data[instr.wggi.src_g];
-			cpu->data[instr.wggi.dst_g] = tmpg1;
+			cpu->data[instr.wggi.tgt_g] = tmpg1;
 			cpu->ip += 4;
 			break;
 		case 0x3F: // IORl
 			tmpg1 = (uint32_t)instr.wggi.imm;
 			tmpg1 |= cpu->data[instr.wggi.src_g];
-			cpu->data[instr.wggi.dst_g] = tmpg1;
+			cpu->data[instr.wggi.tgt_g] = tmpg1;
 			cpu->ip += 4;
 			break;
 		case 0x40: // IORh
 			tmpg1 = ((uint32_t)instr.wggi.imm) << 16;
 			tmpg1 |= cpu->data[instr.wggi.src_g];
-			cpu->data[instr.wggi.dst_g] = tmpg1;
+			cpu->data[instr.wggi.tgt_g] = tmpg1;
 			cpu->ip += 4;
 			break;
 		case 0x41: // XORl
 			tmpg1 = (uint32_t)instr.wggi.imm;
 			tmpg1 ^= cpu->data[instr.wggi.src_g];
-			cpu->data[instr.wggi.dst_g] = tmpg1;
+			cpu->data[instr.wggi.tgt_g] = tmpg1;
 			cpu->ip += 4;
 			break;
 		case 0x42: // XORh
 			tmpg1 = ((uint32_t)instr.wggi.imm) << 16;
 			tmpg1 ^= cpu->data[instr.wggi.src_g];
-			cpu->data[instr.wggi.dst_g] = tmpg1;
+			cpu->data[instr.wggi.tgt_g] = tmpg1;
 			cpu->ip += 4;
 			break;
 		case 0x43: // IN
 			tmpg1 = (uint32_t)instr.wggi.imm;
 			tmpg1 += cpu->data[instr.wggi.src_g];
 			tmpg1 &= (1 << IO_ADDR_BITS) - 1;
-			cpu->data[instr.wggi.dst_g] = io_read(cpu->io, tmpg1);
+			cpu->data[instr.wggi.tgt_g] = io_read(cpu->io, tmpg1);
 			cpu->ip += 4;
 			break;
 		case 0x44: // OUT
 			tmpg1 = (uint32_t)instr.wggi.imm;
 			tmpg1 += cpu->data[instr.wggi.src_g];
 			tmpg1 &= (1 << IO_ADDR_BITS) - 1;
-			io_write(cpu->io, tmpg1, cpu->data[instr.wggi.dst_g]);
+			io_write(cpu->io, tmpg1, cpu->data[instr.wggi.tgt_g]);
 			cpu->ip += 4;
 			break;
 		case 0x45: // JCArx

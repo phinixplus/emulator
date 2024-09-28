@@ -71,6 +71,9 @@ int main(int argc, char **argv) {
 	io_t io = io_new();
 	cleanup_registry.io = io;
 
+	ipm_t ipm; ipm_new(&ipm);
+	ipm_attach_isrloc(io, 0, &cpu);
+
 	// Prevent threads from trying to handle signals
 	// Signal mask is inherited by spawned threads
 	sigset_t signal_mask; sigemptyset(&signal_mask);
@@ -90,7 +93,7 @@ int main(int argc, char **argv) {
 	// Setup memory and CPU
 	mem_t mem = mem_new(options.file);
 	cleanup_registry.mem = mem;
-	cpu_new(&cpu, mem, io);
+	cpu_new(&cpu, mem, io, &ipm);
 
 	// Do cycles and print sate if verbose
 	do { if(options.verbose) cpu_print_state(&cpu); } while(cpu_execute(&cpu));

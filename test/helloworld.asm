@@ -7,7 +7,7 @@ lw t1 t0
 add t0 4
 loop:
 	lbu t2 t0
-	out t2 1
+	out t2 telnet
 	add t0 1
 	sub t1 1
 	tst nzr c1 t1

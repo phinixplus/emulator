@@ -1,56 +1,55 @@
 {
 	"version": "2.0.0",
-	"inputs": [
-		{
-			"id": "asm-src",
-			"type": "promptString",
-			"description": "The assembly file to assemble into a memory image.",
-			"default": "test/main.asm"
-		}
-	],
 	"tasks": [
 		{
 			"label": "Clean",
 			"type": "shell",
-			"command": "bash",
-			"args": [ "-l", "${workspaceFolder}/build.sh", "clean" ],
+			"command": "make",
+			"args": [ "clean" ],
+			"group": { "kind": "build" },
+			"presentation": { "reveal": "never" }
+		}, {
+			"label": "Purge",
+			"type": "shell",
+			"command": "make",
+			"args": [ "purge" ],
 			"group": { "kind": "build" },
 			"presentation": { "reveal": "never" }
 		}, {
 			"label": "Assemble",
 			"type": "shell",
-			"command": "bash",
-			"args": [ "-l", "${workspaceFolder}/build.sh", "assemble", "${input:asm-src}" ],
+			"command": "make",
+			"args": [ "assemble" ],
 			"group": { "kind": "build" },
 			"presentation": { "reveal": "always" }
 		}, {
 			"label": "Build (Debug)",
 			"type": "shell",
-			"command": "bash",
-			"args": [ "-l", "${workspaceFolder}/build.sh", "build", "debug" ],
+			"command": "make",
+			"args": [ "debug" ],
 			"group": { "kind": "build" },
 			"presentation": { "reveal": "always" }
 		}, {
 			"label": "Build (Release)",
 			"type": "shell",
-			"command": "bash",
-			"args": [ "-l", "${workspaceFolder}/build.sh", "build", "release" ],
+			"command": "make",
+			"args": [ "release" ],
 			"group": { "kind": "build" },
 			"presentation": { "reveal": "always" }
 		}, {
-			"label": "Cleanbuild (Debug)",
+			"label": "Fresh Build (Debug)",
 			"dependsOrder": "sequence",
-			"dependsOn": [ "Clean", "Build (Debug)" ],
+			"dependsOn": [ "Purge", "Build (Debug)" ],
 			"group": { "kind": "build" }
 		}, {
-			"label": "Cleanbuild (Release)",
+			"label": "Fresh Build (Release)",
 			"dependsOrder": "sequence",
-			"dependsOn": [ "Clean", "Build (Release)" ],
+			"dependsOn": [ "Purge", "Build (Release)" ],
 			"group": { "kind": "build" }
 		}, {
 			"label": "Launch",
 			"dependsOrder": "sequence",
-			"dependsOn": [ "Clean", "Assemble", "Build (Debug)" ]
+			"dependsOn": [ "Purge", "Build (Debug)", "Assemble" ]
 		}
 	]
 }

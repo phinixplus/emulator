@@ -1,3 +1,5 @@
+SHELL=/usr/bin/env bash
+
 # C Definitions
 C_COMPILER		= gcc
 C_FLAGS_DBG		= -Wall -Wextra -pedantic -std=c11 -D_POSIX_C_SOURCE=200809L -g -rdynamic
@@ -26,11 +28,11 @@ $(C_OBJECTS): LOCAL_INCLUDE = $(patsubst $(C_BUILD_LOC)%,-I$(C_INCLUDE_LOC)%,$(s
 $(C_OBJECTS): $(C_BUILD_LOC)%.o: $(C_SOURCE_LOC)%.c
 	@dirname $@ | xargs mkdir -p
 	@$(C_COMPILER) $(C_FLAGS) -c $^ $(C_INCLUDES:%=-I%) $(LOCAL_INCLUDE) -o $@
-	@echo "$(shell echo $(C_COMPILER) | tr [:lower:] [:upper:])\t$@"
+	@echo -e '$(shell echo $(C_COMPILER) | tr [:lower:] [:upper:])\t$@'
 
 $(C_EXE_NAME): $(C_OBJECTS)
 	@$(C_COMPILER) $(CFLAGS) $^ $(C_LIBRARIES) -o $@
-	@echo "-> $@"
+	@echo '-> $@'
 
 # Assembly Definitions
 ASSEMBLER		= customasm
@@ -50,7 +52,7 @@ assemble: $(ASM_OBJECTS)
 $(ASM_OBJECTS): $(ASM_BUILD_LOC)%.hex: $(ASM_SOURCE_LOC)%.asm
 	@mkdir -p $(ASM_BUILD_LOC)
 	@$(ASSEMBLER) $(ASM_FLAGS) $^ -o $@
-	@echo "$(shell echo $(ASSEMBLER) | tr [:lower:] [:upper:])\t$@"
+	@echo -e '$(shell echo $(ASSEMBLER) | tr [:lower:] [:upper:])\t$@'
 
 # Utility Rules
 .PHONY: clean purge
@@ -64,6 +66,6 @@ purge:
 	-@rm -r $(C_BUILD_LOC)
 	-@rm -r $(ASM_BUILD_LOC)
 
-	-@echo '$(C_BUILD_LOC)\n${ASM_BUILD_LOC}' |\
+	-@echo -e '$(C_BUILD_LOC)\n${ASM_BUILD_LOC}' |\
 	cut -d'/' -f1 | xargs -I! find ! -type d |\
 	xargs rmdir -p

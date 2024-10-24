@@ -9,16 +9,29 @@
 
 // IO Registry Section //
 
-typedef void (*io_callback_t)(bool rw_select, uint32_t *rw_data, void *context);
+typedef void (*io_callback_t)(
+	bool rw_select,
+	uint32_t *rw_data,
+	void *context
+);
 typedef struct io_registry *io_t;
+typedef enum io_type {
+	IO_READONLY = 1,
+	IO_WRITEONLY = 2,
+	IO_READWRITE = 3
+} io_type_t;
 
 io_t io_new(void);
 void io_del(io_t io);
 
-bool io_attach_read(io_t io, uint16_t port, io_callback_t callback, void *context);
-bool io_detach_read(io_t io, uint16_t port, io_callback_t *ret_callback, void **ret_context);
-bool io_attach_write(io_t io, uint16_t port, io_callback_t callback, void *context);
-bool io_detach_write(io_t io, uint16_t port, io_callback_t *ret_callback, void **ret_context);
+bool io_try_attach(
+	io_t io, uint16_t port, io_type_t type,
+	io_callback_t callback, void *context
+);
+bool io_try_detach(
+	io_t io, uint16_t port, io_type_t type,
+	io_callback_t *ret_callback, void **ret_context
+);
 
 uint32_t io_read(io_t io, uint16_t port);
 void io_write(io_t io, uint16_t port, uint32_t value);

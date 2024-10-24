@@ -59,7 +59,7 @@ const char addrreg_conv[][3] = {
 	"s6", "s7", "gp", "sp", "k0", "k1", "k2", "k3"
 };
 
-void cpu_new(cpu_t *cpu, mem_t mem, io_t io, ipm_t *ipm) {
+void cpu_new(cpu_t *cpu, mem_t mem, io_t io, bool with_ipm) {
 	// Make sure the instruction formats union is packed correctly.
 	assert(sizeof(instruction_t) == sizeof(uint32_t));
 
@@ -72,7 +72,8 @@ void cpu_new(cpu_t *cpu, mem_t mem, io_t io, ipm_t *ipm) {
 	for(unsigned i = 0; i<16; i++)
 		cpu->data[i] = cpu->addr[i] = 0;
 
-	cpu->mem = mem, cpu->io = io, cpu->ipm = ipm;
+	cpu->mem = mem, cpu->io = io;
+	if(with_ipm) ipm_new(cpu);
 }
 
 void cpu_interrupt(cpu_t *cpu) {

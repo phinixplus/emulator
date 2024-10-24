@@ -24,59 +24,55 @@ void io_del(io_t io) {
 	free(io);
 }
 
-bool io_attach_read(
-	io_t io, uint16_t port,
-	io_callback_t callback,
-	void *context
+bool io_try_attach(
+	io_t io, uint16_t port, io_type_t type,
+	io_callback_t callback, void *context
 ) {
 	port &= (1 << IO_ADDR_BITS) - 1;
-	if(io->read_callbacks[port] != NULL) return false;
 
-	io->read_callbacks[port] = callback;
-	io->read_contexts[port] = context;
+	if((type & IO_READONLY) && io->read_callbacks[port] != NULL) return false;
+	if((type & IO_WRITEONLY) && io->write_callbacks[port] != NULL) return false;
+
+	if(type & IO_READONLY) {
+		io->read_callbacks[port] = callback;
+		io->read_contexts[port] = context;
+	}
+
+	if(type & IO_WRITEONLY) {
+		io->write_callbacks[port] = callback;
+		io->write_contexts[port] = context;
+	}
+
 	return true;
 }
 
-bool io_detach_read(
-	io_t io, uint16_t port,
-	io_callback_t *ret_callback,
-	void **ret_context
+bool io_try_detach(
+	io_t io, uint16_t port, io_type_t type,
+	io_callback_t *ret_callback, void **ret_context
 ) {
 	port &= (1 << IO_ADDR_BITS) - 1;
-	if(io->read_callbacks[port] == NULL) return false;
 
-	if(ret_callback != NULL) *ret_callback = io->read_callbacks[port];
-	if(ret_context != NULL) *ret_context = io->read_contexts[port];
-	io->read_callbacks[port] = NULL;
-	io->read_contexts[port] = NULL;
-	return true;
-}
+	if((type & IO_READONLY) && io->read_callbacks[port] == NULL) return false;
+	if((type & IO_WRITEONLY) && io->write_callbacks[port] == NULL) return false;
+	if(type == IO_READWRITE) {
+		if(io->read_callbacks[port] != io->write_callbacks[port]) return false;
+		if(io->read_contexts[port] != io->write_contexts[port]) return false;
+	}
 
-bool io_attach_write(
-	io_t io, uint16_t port,
-	io_callback_t callback,
-	void *context
-) {
-	port &= (1 << IO_ADDR_BITS) - 1;
-	if(io->write_callbacks[port] != NULL) return false;
+	if(type & IO_READONLY) {
+		if(ret_callback != NULL) *ret_callback = io->read_callbacks[port];
+		if(ret_context != NULL) *ret_context = io->read_contexts[port];
+		io->read_callbacks[port] = NULL;
+		io->read_contexts[port] = NULL;
+	}
 
-	io->write_callbacks[port] = callback;
-	io->write_contexts[port] = context;
-	return true;
-}
+	if(type & IO_WRITEONLY) {
+		if(ret_callback != NULL) *ret_callback = io->write_callbacks[port];
+		if(ret_context != NULL) *ret_context = io->write_contexts[port];
+		io->read_callbacks[port] = NULL;
+		io->read_contexts[port] = NULL;
+	}
 
-bool io_detach_write(
-	io_t io, uint16_t port,
-	io_callback_t *ret_callback,
-	void **ret_context
-) {
-	port &= (1 << IO_ADDR_BITS) - 1;
-	if(io->write_callbacks[port] == NULL) return false;
-
-	if(ret_callback != NULL) *ret_callback = io->write_callbacks[port];
-	if(ret_context != NULL) *ret_context = io->write_contexts[port];
-	io->write_callbacks[port] = NULL;
-	io->write_contexts[port] = NULL;
 	return true;
 }
 

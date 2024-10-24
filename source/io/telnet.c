@@ -2,6 +2,7 @@
 
 #include <netinet/ip.h>
 #include <sys/socket.h>
+#include <assert.h>
 #include <poll.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -101,9 +102,7 @@ bool telnet_setup(io_t io, uint16_t net_port) {
 
 	unsigned char preamble[] = { 255, 251, 0, 255, 251, 1, 255, 251, 3 };
 	if(write(state.client_socket, preamble, sizeof preamble) != sizeof preamble) goto fail2;
-
-	if(!io_attach_read(io, 2, telnet_callback, NULL)) goto fail2;
-	if(!io_attach_write(io, 2, telnet_callback, NULL)) goto fail2;
+	if(!io_try_attach(io, 2, IO_READWRITE, telnet_callback, NULL)) goto fail2;
 
 	state.poll_descriptor.fd = state.client_socket;
 	state.poll_descriptor.events = POLLIN;
@@ -122,7 +121,6 @@ void telnet_close(io_t io) {
 	if(state.client_socket != -1) {
 		close(state.client_socket);
 		state.client_socket = -1;
-		io_detach_read(io, 2, NULL, NULL);
-		io_detach_write(io, 2, NULL, NULL);
+		assert(io_try_detach(io, 2, IO_READWRITE, NULL, NULL));
 	}
 }

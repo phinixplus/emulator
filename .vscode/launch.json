@@ -1,5 +1,13 @@
 {
 	"version": "0.2.0",
+	"inputs": [
+		{
+			"id": "pick_asm_file",
+			"type": "promptString",
+			"description": "Pick an assembly file to run...",
+			"default": "asm/main.hex"
+		}
+	],
 	"configurations": [
 		{
 			"type": "cppdbg",
@@ -8,7 +16,7 @@
 			"preLaunchTask": "Launch",
 			"program": "${workspaceRoot}/build/pplusemu",
 			"cwd": "${workspaceRoot}/build/",
-			"args": [ "-v", "mem.hex" ]
+			"args": [ "-v", "${input:pick_asm_file}" ]
 		},
 		{
 			"type": "cppdbg",
@@ -17,7 +25,7 @@
 			"preLaunchTask": "Launch",
 			"program": "${workspaceRoot}/build/pplusemu",
 			"cwd": "${workspaceRoot}/build/",
-			"args": [ "mem.hex" ]
+			"args": [ "${input:pick_asm_file}" ]
 		}
 	]
 }

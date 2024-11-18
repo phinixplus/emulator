@@ -4,6 +4,7 @@
 #include <stdlib.h>
 
 #include "cpu.h"
+#include "io/portdefs.h"
 
 static void isrloc_callback(bool rw_select, uint32_t *rw_data, void *context) {
 	cpu_t *context_real = (cpu_t *) context;
@@ -14,12 +15,12 @@ static void isrloc_callback(bool rw_select, uint32_t *rw_data, void *context) {
 void ipm_new(cpu_t *cpu) {
 	cpu->ipm.is_init = true;
 	cpu->ipm.is_privileged = true;
-	assert(io_try_attach(cpu->io, 0, IO_READWRITE, isrloc_callback, cpu));
+	assert(io_try_attach(cpu->io, IO_ISRLOC, IO_READWRITE, isrloc_callback, cpu));
 }
 
 void ipm_del(cpu_t *cpu) {
 	cpu->ipm.is_init = false;
-	assert(io_try_detach(cpu->io, 0, IO_READWRITE, NULL, NULL));
+	assert(io_try_detach(cpu->io, IO_ISRLOC, IO_READWRITE, NULL, NULL));
 }
 
 void ipm_set_privilege(cpu_t *cpu, bool is_privileged) {

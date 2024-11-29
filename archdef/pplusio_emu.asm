@@ -1,3 +1,4 @@
-isrloc = 0
-dbgcon = 1
-telnet = 2
+isrloc = 0x00
+irqsrc = 0x01
+dbgcon = 0x10
+telnet = 0x11

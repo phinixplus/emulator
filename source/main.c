@@ -18,6 +18,7 @@
 static options_t options;
 static struct {
 	pthread_t freq;
+	cpu_t *cpu;
 	mem_t mem;
 	io_t io;
 } cleanup_registry;
@@ -45,14 +46,15 @@ static void *freq_counter_thread(void *cycle_count) {
 }
 
 static void cleanup(void) {
-	stop_running();
+	stop_running(); // Cooperative shutdown signal (making sure)
+	if(options.show_freq) pthread_join(cleanup_registry.freq, NULL);
+
 	assert(dbgcon_close(cleanup_registry.io));
 	telnet_close(cleanup_registry.io);
 
-	io_del(cleanup_registry.io);
+	cpu_del(cleanup_registry.cpu);
 	mem_del(cleanup_registry.mem);
-	if(options.show_freq)
-		pthread_join(cleanup_registry.freq, NULL);
+	io_del(cleanup_registry.io);
 }
 
 int main(int argc, char **argv) {
@@ -67,7 +69,11 @@ int main(int argc, char **argv) {
 	sig_int.sa_flags = 0;
 	sigaction(SIGINT, &sig_int, NULL);
 
+	// Setup and register for cleanup
 	cpu_t cpu;
+	cleanup_registry.cpu = &cpu;
+	mem_t mem = mem_new(options.file);
+	cleanup_registry.mem = mem;
 	io_t io = io_new();
 	cleanup_registry.io = io;
 
@@ -87,14 +93,18 @@ int main(int argc, char **argv) {
 	// Revert the mask so that main thread gets to handle the signals
 	pthread_sigmask(SIG_UNBLOCK, &signal_mask, NULL);
 
-	// Setup memory and CPU
-	mem_t mem = mem_new(options.file);
-	cleanup_registry.mem = mem;
+	// After cpu handle has been distributed, init and sendoff
 	cpu_new(&cpu, mem, io, true);
+	while(is_running()) {
+		cpu_execute(&cpu);
+		if(options.verbose)
+			cpu_print_state(&cpu);
+	}
 
-	// Do cycles and print sate if verbose
-	do { if(options.verbose) cpu_print_state(&cpu); } while(cpu_execute(&cpu));
-	fprintf(stderr, "CPU halted after %lu step(s).\n", cpu.step_count);
+	fprintf(stderr,
+		"CPU halted after %lu step(s).\n",
+		cpu.step_count
+	);
 
 	exit(EXIT_SUCCESS);
 }

@@ -90,7 +90,7 @@
 ;                 |         
 
 #ruledef native_hg {
-	hlt => 0x00`8 @ 0x0`4 @ 0x0`4
+	brk => 0x00`8 @ 0x0`4 @ 0x0`4
 	rsm => 0x00`8 @ 0x1`4 @ 0x0`4
 	mov jp {src: datareg} => 0x00`8 @ 0x2`4 @ {src}
 	mov {dst: datareg} jp => 0x00`8 @ 0x3`4 @ {dst}

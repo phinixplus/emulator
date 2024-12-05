@@ -1,5 +1,6 @@
 #include "cpu.h"
 
+#include "main.h"
 #include "util.h"
 
 #include <assert.h>
@@ -65,7 +66,8 @@ void cpu_new(cpu_t *cpu, mem_t mem, io_t io, bool with_ipm) {
 
 	cpu->step_count = 0;
 	cpu->start_addr = 0;
-	cpu->irq_pending = false;
+	pthread_mutex_init(&cpu->mutex, NULL);
+	pthread_cond_init(&cpu->signal, NULL);
 
 	cpu->ip = cpu->jp = 0;
 	cpu->cond &= ~1;
@@ -76,21 +78,21 @@ void cpu_new(cpu_t *cpu, mem_t mem, io_t io, bool with_ipm) {
 	if(with_ipm) ipm_new(cpu);
 }
 
-void cpu_interrupt(cpu_t *cpu) {
-	cpu->irq_pending = true;
+void cpu_del(cpu_t *cpu) {
+	pthread_mutex_trylock(&cpu->mutex);
+	pthread_mutex_unlock(&cpu->mutex);
+	pthread_mutex_destroy(&cpu->mutex);
+	pthread_cond_destroy(&cpu->signal);
 }
 
-static void handle_interrupt(cpu_t *cpu) {
-	if(cpu->irq_pending) {
-		cpu->jp = cpu->ip;
-		cpu->ip = cpu->start_addr;
+void cpu_execute(cpu_t *cpu) {
+	pthread_mutex_lock(&cpu->mutex);
+	if(ipm_interrupted(cpu) && !ipm_check_privilege(cpu, false)) {
+		cpu->jp = cpu->ip, cpu->ip = cpu->start_addr;
 		ipm_set_privilege(cpu, true);
-		cpu->irq_pending = false;
 	}
-}
 
-bool cpu_execute(cpu_t *cpu) {
-	if(!ipm_check_privilege(cpu, false)) handle_interrupt(cpu);
+	again:; // PAD jumps here to fetch again without counting a cycle
 	uint32_t inst_word = mem_fetch_word(cpu->mem, cpu->ip);
 	instruction_t instr = {inst_word};
 
@@ -99,8 +101,10 @@ bool cpu_execute(cpu_t *cpu) {
 	char hexbuf[9] = {0};
 	switch(instr.opcode) {
 		case 0x00: switch(instr.hg.funct) {
-			case 0x0: // HLT
-				return false;
+			case 0x0: // BRK
+				if(!ipm_check_privilege(cpu, false)) ipm_interrupt(cpu, 1);
+				else pthread_cond_wait(&cpu->signal, &cpu->mutex);
+				break;
 			case 0x1: // RSM
 				cpu->ip = cpu->jp;
 				ipm_set_privilege(cpu, false);
@@ -121,10 +125,11 @@ bool cpu_execute(cpu_t *cpu) {
 					"Encountered invalid opcode 00,%xh at %8sh.\n",
 					instr.hg.funct, hexbuf
 				);
-				return false;
+				stop_running();
+				break;
 			case 0xF: // PAD
 				cpu->ip += 2;
-				return cpu_execute(cpu);
+				goto again;
 		} break;
 		case 0x01: // MOVxx
 			cpu->data[instr.hgg.tgt_g] = cpu->data[instr.hgg.src_g];
@@ -584,12 +589,13 @@ bool cpu_execute(cpu_t *cpu) {
 				"Encountered invalid opcode %xh at %8sh.\n",
 				instr.opcode, hexbuf
 			);
-			return false;
+			stop_running();
+			break;
 	}
 	cpu->cond &= 0xFE;
 	cpu->data[0] = 0;
 	cpu->step_count++;
-	return true;
+	pthread_mutex_unlock(&cpu->mutex);
 }
 
 void cpu_print_state(cpu_t *cpu) {

@@ -18,4 +18,4 @@ li  t0 1
 out t0 dbgcon
 ; fire an interrupt with debugger here
 brk
-#d16 0xFF_FF ; Illegal instruction, hlt is gone :(
+out zr envcmd

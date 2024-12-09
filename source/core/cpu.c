@@ -75,6 +75,7 @@ void cpu_new(cpu_t *cpu, mem_t mem, io_t io, bool with_ipm) {
 		cpu->data[i] = cpu->addr[i] = 0;
 
 	cpu->mem = mem, cpu->io = io;
+	cpu->ipm.is_init = false;
 	if(with_ipm) ipm_new(cpu);
 }
 

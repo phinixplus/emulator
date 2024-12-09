@@ -4,6 +4,7 @@
 #include <stdlib.h>
 
 #include "cpu.h"
+#include "main.h"
 #include "io/portdefs.h"
 
 static void isrloc_callback(bool rw_select, uint32_t *rw_data, void *context) {
@@ -18,20 +19,29 @@ static void irqsrc_callback(bool rw_select, uint32_t *rw_data, void *context) {
 	else *rw_data = context_real->ipm.irq_bitmap;
 }
 
+static void envcmd_callback(bool rw_select, uint32_t *rw_data, void *context) {
+	(void) context;
+	assert(rw_select);
+	if(*rw_data == 0)
+		stop_running();
+}
+
 void ipm_new(cpu_t *cpu) {
 	if(cpu->ipm.is_init) return;
 	cpu->ipm.is_init = true;
 	cpu->ipm.is_privileged = true;
 	cpu->ipm.irq_bitmap = 0;
-	assert(io_try_attach(cpu->io, IO_ISRLOC, IO_READWRITE, isrloc_callback, cpu));
-	assert(io_try_attach(cpu->io, IO_IRQSRC, IO_READWRITE, irqsrc_callback, cpu));
+	assert(io_try_attach(cpu->io, IO_ISRLOC, isrloc_callback, cpu));
+	assert(io_try_attach(cpu->io, IO_IRQSRC, irqsrc_callback, cpu));
+	assert(io_try_attach(cpu->io, IO_ENVCMD, envcmd_callback, NULL));
 }
 
 void ipm_del(cpu_t *cpu) {
 	if(!cpu->ipm.is_init) return;
 	cpu->ipm.is_init = false;
-	assert(io_try_detach(cpu->io, IO_ISRLOC, IO_READWRITE, NULL, NULL));
-	assert(io_try_detach(cpu->io, IO_IRQSRC, IO_READWRITE, NULL, NULL));
+	assert(io_try_detach(cpu->io, IO_ISRLOC, NULL, NULL));
+	assert(io_try_detach(cpu->io, IO_IRQSRC, NULL, NULL));
+	assert(io_try_detach(cpu->io, IO_ENVCMD, NULL, NULL));
 }
 
 void ipm_set_privilege(cpu_t *cpu, bool is_privileged) {

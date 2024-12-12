@@ -62,6 +62,7 @@ bool ipm_interrupt(cpu_t *cpu, uint16_t irq_id) {
 	bool succ = (cpu->ipm.irq_bitmap & 1 << irq_id) != 0;
 	cpu->ipm.irq_bitmap |= 1 << irq_id;
 	pthread_mutex_unlock(&cpu->mutex);
+	pthread_cond_signal(&cpu->signal);
 	return succ;
 }
 

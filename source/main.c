@@ -65,7 +65,7 @@ int main(int argc, char **argv) {
 	struct sigaction sig_int;
 	sig_int.sa_handler = exit_as_sighandler;
 	sigemptyset(&sig_int.sa_mask);
-	sigaddset(&sig_int.sa_mask, SIGTERM);
+	sigaddset(&sig_int.sa_mask, SIGINT);
 	sig_int.sa_flags = 0;
 	sigaction(SIGINT, &sig_int, NULL);
 

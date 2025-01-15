@@ -13,6 +13,7 @@
 #include "core/mem.h"
 #include "core/io.h"
 #include "io/dbgcon.h"
+#include "io/tty.h"
 
 static options_t options;
 static struct {
@@ -49,6 +50,7 @@ static void cleanup(void) {
 	if(options.show_freq) pthread_join(cleanup_registry.freq, NULL);
 
 	assert(dbgcon_close(cleanup_registry.io));
+	assert(tty_close(cleanup_registry.io));
 
 	cpu_del(cleanup_registry.cpu);
 	mem_del(cleanup_registry.mem);
@@ -82,6 +84,7 @@ int main(int argc, char **argv) {
 	pthread_sigmask(SIG_BLOCK, &signal_mask, NULL);
 	{ // <- Spawn threads inside this block
 		assert(dbgcon_setup(io));
+		assert(tty_setup(io));
 		if(options.show_freq) pthread_create(
 			&cleanup_registry.freq, NULL,
 			freq_counter_thread, &cpu.step_count

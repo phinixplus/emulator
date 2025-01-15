@@ -31,6 +31,8 @@ void dbgcon_callback(bool rw_select, uint32_t *rw_data, void *context) {
 	else *rw_data = io_fifo_space(state.fifo);
 }
 
+// 15/01/24 TODO: Refactor dbgcon_setup and dbgcon_close.
+
 bool dbgcon_setup(io_t io) {
 	if(state.init) return false;
 	state.fifo = io_fifo_new();

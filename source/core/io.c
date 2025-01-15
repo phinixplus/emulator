@@ -110,6 +110,8 @@ void io_write(io_t io, uint16_t port, uint32_t value) {
 
 // IO FIFO Section //
 
+// 15/01/24 TODO: Refactor the whole io_fifo_t.
+
 typedef struct io_fifo_object {
 	pthread_mutex_t mutex;
 	volatile uint32_t widx, ridx;

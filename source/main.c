@@ -15,6 +15,8 @@
 #include "io/dbgcon.h"
 #include "io/tty.h"
 
+#define TTY_SERVER_PORT 2323
+
 static options_t options;
 static struct {
 	pthread_t freq;
@@ -84,7 +86,7 @@ int main(int argc, char **argv) {
 	pthread_sigmask(SIG_BLOCK, &signal_mask, NULL);
 	{ // <- Spawn threads inside this block
 		assert(dbgcon_setup(io));
-		assert(tty_setup(io));
+		assert(tty_setup(io, TTY_SERVER_PORT));
 		if(options.show_freq) pthread_create(
 			&cleanup_registry.freq, NULL,
 			freq_counter_thread, &cpu.step_count

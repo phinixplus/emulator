@@ -58,7 +58,7 @@ static void *tty_thread(void *dummy) {
 			if(state.client_descrs[i].fd == -1) continue;
 			if(!(state.client_descrs[i].revents & POLLIN)) continue;
 
-			char buffer[TTY_BUFFER_SIZE];
+			unsigned char buffer[TTY_BUFFER_SIZE];
 			ssize_t count = recv(
 				state.client_descrs[i].fd,
 				buffer, TTY_BUFFER_SIZE , 0
@@ -74,7 +74,23 @@ static void *tty_thread(void *dummy) {
 			} else assert(count > 0);
 			printf("TTY%d: Got %ld byte(s)\n", i + 1, count);
 
-			// TODO: Interface with FIFOs here
+			uint32_t fifo_space = io_fifo_space(state.cpubound_fifos[i]);
+			if(count > fifo_space) {
+				ssize_t difference = count - fifo_space;
+				printf("TTY%d: Tossing %ld CPU-bound bytes(s)\n", i + 1, difference);
+				count = fifo_space;
+			}
+			for(int j = 0; j < count; j++) {
+				uint32_t data = buffer[j];
+				io_fifo_write(state.cpubound_fifos[i], &data);
+			}
+
+			count = (1 << IO_FIFO_SIZE_BITS) - io_fifo_space(state.ttybound_fifos[i]);
+			for(int j = 0; i < count; j++) {
+				uint32_t data;
+				io_fifo_read(state.ttybound_fifos[i], &data);
+				buffer[j] = (unsigned char)(data & 0xFF);
+			}
 
 			assert(send(state.client_descrs[i].fd, buffer, count, 0) == count);
 			printf("TTY%d: Sent %ld byte(s)\n", i + 1, count);
@@ -109,7 +125,7 @@ static void ttyreq_callback(bool rw_select, uint32_t *rw_data, void *context) {
 
 static void ttysel_callback(bool rw_select, uint32_t *rw_data, void *context) {
 	(void) context;
-	if(rw_select) state.tty_selection = *rw_data & (1 << 6 - 1);
+	if(rw_select) state.tty_selection = *rw_data & ((1 << 6) - 1);
 	else *rw_data = state.tty_selection;
 }
 

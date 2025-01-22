@@ -15,7 +15,7 @@
 static struct {
 	volatile bool init;
 	cpu_t *irq_cpu;
-	unsigned tty_selection;
+	unsigned dev_select;
 
 	pthread_mutex_t mutex;
 	pthread_t server_thread;
@@ -125,22 +125,33 @@ static void ttyreq_callback(bool rw_select, uint32_t *rw_data, void *context) {
 
 static void ttysel_callback(bool rw_select, uint32_t *rw_data, void *context) {
 	(void) context;
-	if(rw_select) state.tty_selection = *rw_data & ((1 << 6) - 1);
-	else *rw_data = state.tty_selection;
+	if(rw_select) state.dev_select = *rw_data & ((1 << 6) - 1);
+	else *rw_data = state.dev_select;
 }
 
 static void ttydata_callback(bool rw_select, uint32_t *rw_data, void *context) {
-	(void) rw_select;
-	(void) rw_data;
 	(void) context;
-	// TODO: Data port
+	unsigned tty_select = state.dev_select & ((1 << 5) - 1);
+	if(tty_select >= TTY_MAX_CLIENTS) return;
+	pthread_mutex_lock(&state.mutex);
+	if(state.client_descrs[tty_select].fd == -1) return;
+	if(rw_select) io_fifo_write(state.ttybound_fifos[tty_select], rw_data);
+	else if(!io_fifo_read(state.cpubound_fifos[tty_select], rw_data))
+		*rw_data = 0x80000000; // If the FIFO was empty, signal using sign bit
+	pthread_mutex_unlock(&state.mutex);
 }
 
 static void ttystat_callback(bool rw_select, uint32_t *rw_data, void *context) {
-	(void) rw_select;
-	(void) rw_data;
 	(void) context;
-	// TODO: Control/Status port
+	assert(!rw_select);
+	unsigned tty_select = state.dev_select & ((1 << 5) - 1);
+	bool buffer_select = (state.dev_select & (1 << 6) != 0);
+	if(state.dev_select >= TTY_MAX_CLIENTS) return;
+	pthread_mutex_lock(&state.mutex);
+	if(state.client_descrs[state.dev_select].fd == -1) return;
+	if(buffer_select) *rw_data = io_fifo_space(state.ttybound_fifos[tty_select]);
+	else *rw_data = io_fifo_space(state.cpubound_fifos[tty_select]);
+	pthread_mutex_unlock(&state.mutex);
 }
 
 bool tty_setup(io_t io, cpu_t *irq_cpu, uint16_t server_port) {

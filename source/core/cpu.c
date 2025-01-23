@@ -104,11 +104,13 @@ void cpu_execute(cpu_t *cpu) {
 		case 0x00: switch(instr.hg.funct) {
 			case 0x0: // BRK
 				if(!ipm_check_privilege(cpu, false)) ipm_interrupt(cpu, 1);
-				else pthread_cond_wait(&cpu->signal, &cpu->mutex);
+				else while(!ipm_interrupted(cpu))
+					pthread_cond_wait(&cpu->signal, &cpu->mutex);
+				cpu->ip += 2;
 				break;
 			case 0x1: // RSM
-				cpu->ip = cpu->jp;
 				ipm_set_privilege(cpu, false);
+				cpu->ip = cpu->jp;
 				break;
 			case 0x2: // LJP
 				cpu->jp = cpu->data[instr.hg.tgt_g];

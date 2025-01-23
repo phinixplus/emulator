@@ -145,7 +145,7 @@ static void ttystat_callback(bool rw_select, uint32_t *rw_data, void *context) {
 	(void) context;
 	assert(!rw_select);
 	unsigned tty_select = state.dev_select & ((1 << 5) - 1);
-	bool buffer_select = (state.dev_select & (1 << 6) != 0);
+	bool buffer_select = ((state.dev_select & (1 << 6)) != 0);
 	if(state.dev_select >= TTY_MAX_CLIENTS) return;
 	pthread_mutex_lock(&state.mutex);
 	if(state.client_descrs[state.dev_select].fd == -1) return;
@@ -168,8 +168,11 @@ bool tty_setup(io_t io, cpu_t *irq_cpu, uint16_t server_port) {
 	descriptor.sin_family = AF_INET;
 	descriptor.sin_addr.s_addr = INADDR_ANY;
 	descriptor.sin_port = htons(server_port);
-
+	
+	int option_value = 1;
 	assert((state.server_descr.fd = socket(AF_INET, SOCK_STREAM, 0)) >= 0);
+	assert(setsockopt(state.server_descr.fd, SOL_SOCKET,
+		SO_REUSEADDR, &option_value, sizeof option_value) == 0);
 	struct sockaddr *generic_descr = (struct sockaddr *) &descriptor;
 	assert(bind(state.server_descr.fd, generic_descr, sizeof descriptor) == 0);
 	assert(listen(state.server_descr.fd, 1) == 0);

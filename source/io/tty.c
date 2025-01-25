@@ -53,6 +53,7 @@ static void *tty_thread(void *dummy) {
 			}
 		}
 
+		bool send_irq = false;
 		assert(poll(state.client_descrs, TTY_MAX_CLIENTS, 0) >= 0);
 		for(int i = 0; i < TTY_MAX_CLIENTS; i++) {
 			if(state.client_descrs[i].fd == -1) continue;
@@ -66,9 +67,9 @@ static void *tty_thread(void *dummy) {
 			if(count == 0) {
 				assert(close(state.client_descrs[i].fd) == 0);
 				state.client_descrs[i].fd = -1;
-				ipm_interrupt(state.irq_cpu, 2);
 				io_fifo_del(state.cpubound_fifos[i]);
 				io_fifo_del(state.ttybound_fifos[i]);
+				ipm_interrupt(state.irq_cpu, 2);
 				printf("Disconnected: TTY%d\n", i + 1);
 				continue;
 			} else assert(count > 0);
@@ -84,17 +85,27 @@ static void *tty_thread(void *dummy) {
 				uint32_t data = buffer[j];
 				io_fifo_write(state.cpubound_fifos[i], &data);
 			}
+			send_irq = true;
+		}
 
-			count = (1 << IO_FIFO_SIZE_BITS) - io_fifo_space(state.ttybound_fifos[i]);
-			for(int j = 0; i < count; j++) {
+		for(int i = 0; i < TTY_MAX_CLIENTS; i++) {
+			if(state.client_descrs[i].fd == -1) continue;
+			uint32_t count = (1 << IO_FIFO_SIZE_BITS);
+			count -= io_fifo_space(state.ttybound_fifos[i]);
+			if(count == 0) continue;
+
+			unsigned char buffer[TTY_BUFFER_SIZE];
+			for(unsigned j = 0; j < count; j++) {
 				uint32_t data;
 				io_fifo_read(state.ttybound_fifos[i], &data);
 				buffer[j] = (unsigned char)(data & 0xFF);
 			}
 
 			assert(send(state.client_descrs[i].fd, buffer, count, 0) == count);
-			printf("TTY%d: Sent %ld byte(s)\n", i + 1, count);
+			printf("TTY%d: Sent %u byte(s)\n", i + 1, count);
 		}
+
+		if(send_irq) ipm_interrupt(state.irq_cpu, 2);
 
 		pthread_mutex_unlock(&state.mutex);
 		struct timespec duration = {0, 100 * 1000}; // 100us
@@ -204,6 +215,9 @@ bool tty_close(io_t io) {
 	for(int i = 0; i < TTY_MAX_CLIENTS; i++) {
 		if(state.client_descrs[i].fd == -1) continue;
 		assert(close(state.client_descrs[i].fd) == 0);
+		io_fifo_del(state.cpubound_fifos[i]);
+		io_fifo_del(state.ttybound_fifos[i]);
+		printf("Disconnected: TTY%d\n", i + 1);
 	}
 
 	assert(io_try_detach(io, IO_TTYCON,  NULL, NULL));

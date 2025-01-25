@@ -159,6 +159,10 @@ bool io_fifo_write(io_fifo_t fifo, uint32_t *data) {
 }
 
 uint32_t io_fifo_space(io_fifo_t fifo) {
+	pthread_mutex_lock(&fifo->mutex);
 	uint32_t space = 1 << IO_FIFO_SIZE_BITS;
-	return space - fifo->widx + fifo->ridx;
+	if(fifo->full) space = 0;
+	else space -= fifo->widx + fifo->ridx;
+	pthread_mutex_unlock(&fifo->mutex);
+	return space;
 }

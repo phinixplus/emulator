@@ -92,6 +92,7 @@ void cpu_execute(cpu_t *cpu) {
 		cpu->jp = cpu->ip, cpu->ip = cpu->start_addr;
 		ipm_set_privilege(cpu, true);
 	}
+	pthread_mutex_unlock(&cpu->mutex);
 
 	again:; // PAD jumps here to fetch again without counting a cycle
 	uint32_t inst_word = mem_fetch_word(cpu->mem, cpu->ip);
@@ -104,8 +105,12 @@ void cpu_execute(cpu_t *cpu) {
 		case 0x00: switch(instr.hg.funct) {
 			case 0x0: // BRK
 				if(!ipm_check_privilege(cpu, false)) ipm_interrupt(cpu, 1);
-				else while(!ipm_interrupted(cpu))
-					pthread_cond_wait(&cpu->signal, &cpu->mutex);
+				else {
+					pthread_mutex_lock(&cpu->mutex);
+					while(!ipm_interrupted(cpu))
+						pthread_cond_wait(&cpu->signal, &cpu->mutex);
+					pthread_mutex_unlock(&cpu->mutex);
+				}
 				cpu->ip += 2;
 				break;
 			case 0x1: // RSM
@@ -598,7 +603,6 @@ void cpu_execute(cpu_t *cpu) {
 	cpu->cond &= 0xFE;
 	cpu->data[0] = 0;
 	cpu->step_count++;
-	pthread_mutex_unlock(&cpu->mutex);
 }
 
 void cpu_print_state(cpu_t *cpu) {

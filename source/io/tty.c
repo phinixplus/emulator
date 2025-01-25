@@ -128,9 +128,11 @@ static void ttyreq_callback(bool rw_select, uint32_t *rw_data, void *context) {
 	(void) context;
 	assert(!rw_select);
 	pthread_mutex_lock(&state.mutex);
-	for(int i = 0; i < TTY_MAX_CLIENTS; i++)
+	for(int i = 0; i < TTY_MAX_CLIENTS; i++) {
+		if(state.client_descrs[i].fd == -1) continue;
 		if(io_fifo_space(state.cpubound_fifos[i]) < (1 << IO_FIFO_SIZE_BITS))
 			*rw_data |= 1 << i;
+	}
 	pthread_mutex_unlock(&state.mutex);
 }
 
@@ -145,10 +147,12 @@ static void ttydata_callback(bool rw_select, uint32_t *rw_data, void *context) {
 	unsigned tty_select = state.dev_select & ((1 << 5) - 1);
 	if(tty_select >= TTY_MAX_CLIENTS) return;
 	pthread_mutex_lock(&state.mutex);
-	if(state.client_descrs[tty_select].fd == -1) return;
-	if(rw_select) io_fifo_write(state.ttybound_fifos[tty_select], rw_data);
-	else if(!io_fifo_read(state.cpubound_fifos[tty_select], rw_data))
-		*rw_data = 0x80000000; // If the FIFO was empty, signal using sign bit
+	if(state.client_descrs[tty_select].fd != -1) {
+		putchar(*rw_data);
+		if(rw_select) io_fifo_write(state.ttybound_fifos[tty_select], rw_data);
+		else if(!io_fifo_read(state.cpubound_fifos[tty_select], rw_data))
+			*rw_data = 0x80000000; // If the FIFO was empty, signal using sign bit
+	}
 	pthread_mutex_unlock(&state.mutex);
 }
 
@@ -156,12 +160,13 @@ static void ttystat_callback(bool rw_select, uint32_t *rw_data, void *context) {
 	(void) context;
 	assert(!rw_select);
 	unsigned tty_select = state.dev_select & ((1 << 5) - 1);
-	bool buffer_select = ((state.dev_select & (1 << 6)) != 0);
-	if(state.dev_select >= TTY_MAX_CLIENTS) return;
+	bool buffer_select = ((state.dev_select & (1 << 5)) != 0);
+	if(tty_select >= TTY_MAX_CLIENTS) return;
 	pthread_mutex_lock(&state.mutex);
-	if(state.client_descrs[state.dev_select].fd == -1) return;
-	if(buffer_select) *rw_data = io_fifo_space(state.ttybound_fifos[tty_select]);
-	else *rw_data = io_fifo_space(state.cpubound_fifos[tty_select]);
+	if(state.client_descrs[tty_select].fd != -1) {
+		if(buffer_select) *rw_data = io_fifo_space(state.ttybound_fifos[tty_select]);
+		else *rw_data = io_fifo_space(state.cpubound_fifos[tty_select]);
+	}
 	pthread_mutex_unlock(&state.mutex);
 }
 

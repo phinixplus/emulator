@@ -204,12 +204,12 @@
 	}
 
 	bl  {gpr: datareg} {imm: u5} => {
-		assert(imm >= 1 && imm <= 16)
-		0x36`8 @ (imm-1)`4 @ {gpr}
+		assert(imm >= 2 && imm <= 17)
+		0x36`8 @ (imm-2)`4 @ {gpr}
 	}
 	bru {gpr: datareg} {imm: u5} => {
-		assert(imm >= 1 && imm <= 16)
-		0x37`8 @ (imm-1)`4 @ {gpr}
+		assert(imm >= 2 && imm <= 17)
+		0x37`8 @ (imm-2)`4 @ {gpr}
 	}
 	brs {gpr: datareg} {imm: u5} => {
 		assert(imm >= 2 && imm <= 17)

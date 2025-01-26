@@ -148,7 +148,6 @@ static void ttydata_callback(bool rw_select, uint32_t *rw_data, void *context) {
 	if(tty_select >= TTY_MAX_CLIENTS) return;
 	pthread_mutex_lock(&state.mutex);
 	if(state.client_descrs[tty_select].fd != -1) {
-		putchar(*rw_data);
 		if(rw_select) io_fifo_write(state.ttybound_fifos[tty_select], rw_data);
 		else if(!io_fifo_read(state.cpubound_fifos[tty_select], rw_data))
 			*rw_data = 0x80000000; // If the FIFO was empty, signal using sign bit
@@ -209,7 +208,6 @@ bool tty_setup(io_t io, cpu_t *irq_cpu, uint16_t server_port) {
 }
 
 bool tty_close(io_t io) {
-	(void) io;
 	if(!state.init) return false;
 	state.init = false;
 

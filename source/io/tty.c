@@ -1,6 +1,7 @@
 #include "tty.h"
 
 #include <stdio.h>
+#include <stdatomic.h>
 
 #include <assert.h>
 #include <pthread.h>
@@ -13,7 +14,7 @@
 #include "io/portdefs.h"
 
 static struct {
-	volatile bool init;
+	atomic_bool init;
 	cpu_t *irq_cpu;
 	unsigned dev_select;
 

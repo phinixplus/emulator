@@ -31,7 +31,7 @@ $(C_OBJECTS): $(C_BUILD_LOC)%.o: $(C_SOURCE_LOC)%.c
 	@echo -e '$(shell echo $(C_COMPILER) | tr [:lower:] [:upper:])\t$@'
 
 $(C_EXE_NAME): $(C_OBJECTS)
-	@$(C_COMPILER) $(CFLAGS) $^ $(C_LIBRARIES) -o $@
+	@$(C_COMPILER) $(C_FLAGS) $^ $(C_LIBRARIES) -o $@
 	@echo '-> $@'
 
 # Assembly Definitions

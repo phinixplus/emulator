@@ -1,5 +1,7 @@
 #include "dbgcon.h"
 
+#include <stdatomic.h>
+
 #include <assert.h>
 #include <pthread.h>
 #include <stdio.h>
@@ -8,7 +10,7 @@
 #include "io/portdefs.h"
 
 static struct {
-	volatile bool init;
+	atomic_bool init;
 	io_fifo_t fifo;
 	pthread_t thread;
 } state = {0};

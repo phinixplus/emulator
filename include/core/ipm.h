@@ -1,9 +1,10 @@
 #ifndef PPLUSEMU_CORE_IPM_H
 #define PPLUSEMU_CORE_IPM_H
 
-#include <pthread.h>
 #include <stdbool.h>
 #include <stdint.h>
+
+#include <pthread.h>
 
 #include "io.h"
 

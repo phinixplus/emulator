@@ -1,9 +1,9 @@
 #ifndef PPLUSEMU_IO_DBGCON_H
 #define PPLUSEMU_IO_DBGCON_H
 
-#include "core/io.h"
-
 #include <stdbool.h>
+
+#include "core/io.h"
 
 bool dbgcon_setup(io_t io);
 bool dbgcon_close(io_t io);

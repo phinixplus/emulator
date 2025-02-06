@@ -1,12 +1,11 @@
 #include "tty.h"
 
+#include <assert.h>
 #include <stdio.h>
 #include <stdatomic.h>
 
-#include <assert.h>
-#include <pthread.h>
-
 #include <poll.h>
+#include <pthread.h>
 #include <unistd.h>
 #include <netinet/ip.h>
 #include <sys/socket.h>
@@ -171,7 +170,6 @@ static void ttystat_callback(bool rw_select, uint32_t *rw_data, void *context) {
 }
 
 bool tty_setup(io_t io, cpu_t *irq_cpu, uint16_t server_port) {
-	(void) io;
 	if(state.init) return false;
 
 	state.server_descr.events = POLLIN;

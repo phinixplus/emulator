@@ -1,11 +1,11 @@
 #include "cpu.h"
 
-#include "main.h"
-#include "util.h"
-
 #include <assert.h>
 #include <stdbool.h>
 #include <stdio.h>
+
+#include "main.h"
+#include "util.h"
 
 #pragma pack(push, 1)
 typedef union instruction {
@@ -615,12 +615,12 @@ void cpu_print_state(cpu_t *cpu) {
 	for(int i = 0; i < 16; i++) {
 		hex_string_of_length(value, cpu->data[i], 8);
 		fprintf(stderr, "%s(x%x): %8s ", datareg_conv[i], i, value);
-		putchar((i & 3) == 3 ? '\n' : ' ');
+		fputc((i & 3) == 3 ? '\n' : ' ', stderr);
 	}
 	for(int i = 0; i < 16; i++) {
 		hex_string_of_length(value, cpu->addr[i], 8);
 		fprintf(stderr, "%s(y%x): %8s ", addrreg_conv[i], i, value);
-		putchar((i & 3) == 3 ? '\n' : ' ');
+		fputc((i & 3) == 3 ? '\n' : ' ', stderr);
 	}
 	fprintf(stderr, "-----------------\n");
 }

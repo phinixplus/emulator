@@ -1,11 +1,11 @@
 #ifndef PPLUSEMU_IO_TTY_H
 #define PPLUSEMU_IO_TTY_H
 
-#include "core/cpu.h"
-#include "core/io.h"
-
 #include <stdbool.h>
 #include <stdint.h>
+
+#include "core/cpu.h"
+#include "core/io.h"
 
 #define TTY_MAX_CLIENTS 32
 #define TTY_BUFFER_SIZE 256

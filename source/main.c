@@ -1,11 +1,13 @@
 #include "main.h"
 
 #include <assert.h>
-#include <pthread.h>
 #include <signal.h>
+#include <stdatomic.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#include <pthread.h>
 #include <unistd.h>
 
 #include "args.h"
@@ -25,7 +27,7 @@ static struct {
 	io_t io;
 } cleanup_registry;
 
-static bool running = true;
+static atomic_bool running = true;
 bool is_running(void) { return running; }
 void stop_running(void) { running = false; }
 

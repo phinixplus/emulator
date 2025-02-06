@@ -1,10 +1,11 @@
 #include "io.h"
 
-#include "util.h"
-
-#include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
+
+#include <pthread.h>
+
+#include "util.h"
 
 // IO Registry Section //
 

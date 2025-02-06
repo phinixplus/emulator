@@ -1,8 +1,8 @@
 #ifndef PPLUSEMU_CORE_IO_H
 #define PPLUSEMU_CORE_IO_H
 
-#include <stdint.h>
 #include <stdbool.h>
+#include <stdint.h>
 
 #define IO_ADDR_BITS 8
 #define IO_FIFO_SIZE_BITS 8

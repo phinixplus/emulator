@@ -1,8 +1,9 @@
 #include "args.h"
 
-#include <getopt.h>
 #include <stdio.h>
 #include <stdlib.h>
+
+#include <getopt.h>
 
 void args_print_help(char *exe_name, bool verbose) {
 	if(!verbose) fprintf(stderr,
@@ -32,11 +33,10 @@ options_t args_parse(int argc, char **argv) {
 			case 'v': options.verbose = true; break;
 			case 'f': options.show_freq = true; break;
 			case 'h': args_print_help(argv[0], true); break;
-			default: args_print_help(argv[0], false); break;
+			default:  args_print_help(argv[0], false); break;
 		}
 	}
 	if(argc - optind != 1) args_print_help(argv[0], false);
 	options.file = argv[optind];
 	return options;
 }
-

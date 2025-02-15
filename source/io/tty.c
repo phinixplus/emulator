@@ -26,85 +26,99 @@ static struct {
 	io_fifo_t ttybound_fifos[TTY_MAX_CLIENTS];
 } state = {0};
 
+static void handle_new_client(void) {
+	assert(poll(&state.server_descr, 1, 0) >= 0);
+	if(!(state.server_descr.revents & POLLIN)) return;
+
+	int new_client = accept(state.server_descr.fd, NULL, NULL);
+	assert(new_client >= 0);
+
+	bool found = false;
+	for(int i = 0; i < TTY_MAX_CLIENTS; i++) {
+		if(state.client_descrs[i].fd != -1) continue;
+		state.cpubound_fifos[i] = io_fifo_new();
+		state.ttybound_fifos[i] = io_fifo_new();
+		state.client_descrs[i].fd = new_client;
+		ipm_interrupt(state.irq_cpu, 2);
+		printf("Connected: TTY%d\n", i + 1);
+		found = true;
+		break;
+	}
+
+	if(!found) {
+		assert(close(new_client) == 0);
+		printf("Connected: Refused!\n");
+	}
+}
+
+// TODO: Refactor handle_client_reads
+static bool handle_client_reads(void) {
+	bool send_irq = false;
+	assert(poll(state.client_descrs, TTY_MAX_CLIENTS, 0) >= 0);
+	for(int i = 0; i < TTY_MAX_CLIENTS; i++) {
+		if(state.client_descrs[i].fd == -1) continue;
+		if(!(state.client_descrs[i].revents & POLLIN)) continue;
+
+		unsigned char buffer[TTY_BUFFER_SIZE];
+		ssize_t count = recv(
+			state.client_descrs[i].fd,
+			buffer, TTY_BUFFER_SIZE , 0
+		);
+		if(count == 0) {
+			assert(close(state.client_descrs[i].fd) == 0);
+			state.client_descrs[i].fd = -1;
+			io_fifo_del(state.cpubound_fifos[i]);
+			io_fifo_del(state.ttybound_fifos[i]);
+			ipm_interrupt(state.irq_cpu, 2);
+			printf("Disconnected: TTY%d\n", i + 1);
+			continue;
+		} else assert(count > 0);
+		printf("TTY%d: Got %ld byte(s)\n", i + 1, count);
+
+		uint32_t fifo_space = io_fifo_space(state.cpubound_fifos[i]);
+		if(count > fifo_space) {
+			ssize_t difference = count - fifo_space;
+			printf("TTY%d: Tossing %ld CPU-bound bytes(s)\n", i + 1, difference);
+			count = fifo_space;
+		}
+		for(int j = 0; j < count; j++) {
+			uint32_t data = buffer[j];
+			io_fifo_write(state.cpubound_fifos[i], &data);
+		}
+		send_irq = true;
+	}
+	return send_irq;
+}
+
+// TODO: Refactor handle_client_writes
+static void handle_client_writes(void) {
+	for(int i = 0; i < TTY_MAX_CLIENTS; i++) {
+		if(state.client_descrs[i].fd == -1) continue;
+		uint32_t count = (1 << IO_FIFO_SIZE_BITS);
+		count -= io_fifo_space(state.ttybound_fifos[i]);
+		if(count == 0) continue;
+
+		unsigned char buffer[TTY_BUFFER_SIZE];
+		for(unsigned j = 0; j < count; j++) {
+			uint32_t data;
+			io_fifo_read(state.ttybound_fifos[i], &data);
+			buffer[j] = (unsigned char)(data & 0xFF);
+		}
+
+		assert(send(state.client_descrs[i].fd, buffer, count, 0) == count);
+		printf("TTY%d: Sent %u byte(s)\n", i + 1, count);
+	}
+}
+
+// TODO: Add state machine to abstract the telnet protocol
 static void *tty_thread(void *dummy) {
 	(void) dummy;
 	while(state.init) {
 		pthread_mutex_lock(&state.mutex);
-		assert(poll(&state.server_descr, 1, 0) >= 0);
-		if(state.server_descr.revents & POLLIN) {
-			int new_client = accept(state.server_descr.fd, NULL, NULL);
-			assert(new_client >= 0);
 
-			bool found = false;
-			for(int i = 0; i < TTY_MAX_CLIENTS; i++) {
-				if(state.client_descrs[i].fd != -1) continue;
-				state.cpubound_fifos[i] = io_fifo_new();
-				state.ttybound_fifos[i] = io_fifo_new();
-				state.client_descrs[i].fd = new_client;
-				ipm_interrupt(state.irq_cpu, 2);
-				printf("Connected: TTY%d\n", i + 1);
-				found = true;
-				break;
-			}
-
-			if(!found) {
-				assert(close(new_client) == 0);
-				printf("Connected: Refused!\n");
-			}
-		}
-
-		bool send_irq = false;
-		assert(poll(state.client_descrs, TTY_MAX_CLIENTS, 0) >= 0);
-		for(int i = 0; i < TTY_MAX_CLIENTS; i++) {
-			if(state.client_descrs[i].fd == -1) continue;
-			if(!(state.client_descrs[i].revents & POLLIN)) continue;
-
-			unsigned char buffer[TTY_BUFFER_SIZE];
-			ssize_t count = recv(
-				state.client_descrs[i].fd,
-				buffer, TTY_BUFFER_SIZE , 0
-			);
-			if(count == 0) {
-				assert(close(state.client_descrs[i].fd) == 0);
-				state.client_descrs[i].fd = -1;
-				io_fifo_del(state.cpubound_fifos[i]);
-				io_fifo_del(state.ttybound_fifos[i]);
-				ipm_interrupt(state.irq_cpu, 2);
-				printf("Disconnected: TTY%d\n", i + 1);
-				continue;
-			} else assert(count > 0);
-			printf("TTY%d: Got %ld byte(s)\n", i + 1, count);
-
-			uint32_t fifo_space = io_fifo_space(state.cpubound_fifos[i]);
-			if(count > fifo_space) {
-				ssize_t difference = count - fifo_space;
-				printf("TTY%d: Tossing %ld CPU-bound bytes(s)\n", i + 1, difference);
-				count = fifo_space;
-			}
-			for(int j = 0; j < count; j++) {
-				uint32_t data = buffer[j];
-				io_fifo_write(state.cpubound_fifos[i], &data);
-			}
-			send_irq = true;
-		}
-
-		for(int i = 0; i < TTY_MAX_CLIENTS; i++) {
-			if(state.client_descrs[i].fd == -1) continue;
-			uint32_t count = (1 << IO_FIFO_SIZE_BITS);
-			count -= io_fifo_space(state.ttybound_fifos[i]);
-			if(count == 0) continue;
-
-			unsigned char buffer[TTY_BUFFER_SIZE];
-			for(unsigned j = 0; j < count; j++) {
-				uint32_t data;
-				io_fifo_read(state.ttybound_fifos[i], &data);
-				buffer[j] = (unsigned char)(data & 0xFF);
-			}
-
-			assert(send(state.client_descrs[i].fd, buffer, count, 0) == count);
-			printf("TTY%d: Sent %u byte(s)\n", i + 1, count);
-		}
-
+		handle_new_client();
+		bool send_irq = handle_client_reads();
+		handle_client_writes();
 		if(send_irq) ipm_interrupt(state.irq_cpu, 2);
 
 		pthread_mutex_unlock(&state.mutex);

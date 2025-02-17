@@ -21,9 +21,11 @@ static struct {
 	pthread_t server_thread;
 	struct pollfd server_descr;
 
-	struct pollfd client_descrs[TTY_MAX_CLIENTS];
-	io_fifo_t cpubound_fifos[TTY_MAX_CLIENTS];
-	io_fifo_t ttybound_fifos[TTY_MAX_CLIENTS];
+	struct client_state {
+		struct pollfd descriptor;
+		io_fifo_t cpubound_fifo;
+		io_fifo_t ttybound_fifo;
+	} clients[TTY_MAX_CLIENTS];
 } state = {0};
 
 static void handle_new_client(void) {
@@ -35,10 +37,10 @@ static void handle_new_client(void) {
 
 	bool found = false;
 	for(int i = 0; i < TTY_MAX_CLIENTS; i++) {
-		if(state.client_descrs[i].fd != -1) continue;
-		state.cpubound_fifos[i] = io_fifo_new();
-		state.ttybound_fifos[i] = io_fifo_new();
-		state.client_descrs[i].fd = new_client;
+		if(state.clients[i].descriptor.fd != -1) continue;
+		state.clients[i].cpubound_fifo = io_fifo_new();
+		state.clients[i].ttybound_fifo = io_fifo_new();
+		state.clients[i].descriptor.fd = new_client;
 		ipm_interrupt(state.irq_cpu, 2);
 		printf("Connected: TTY%d\n", i + 1);
 		found = true;
@@ -54,28 +56,28 @@ static void handle_new_client(void) {
 // TODO: Refactor handle_client_reads
 static bool handle_client_reads(void) {
 	bool send_irq = false;
-	assert(poll(state.client_descrs, TTY_MAX_CLIENTS, 0) >= 0);
 	for(int i = 0; i < TTY_MAX_CLIENTS; i++) {
-		if(state.client_descrs[i].fd == -1) continue;
-		if(!(state.client_descrs[i].revents & POLLIN)) continue;
+		assert(poll(&state.clients[i].descriptor, 1, 0) >= 0);
+		if(state.clients[i].descriptor.fd == -1) continue;
+		if(!(state.clients[i].descriptor.revents & POLLIN)) continue;
 
 		unsigned char buffer[TTY_BUFFER_SIZE];
 		ssize_t count = recv(
-			state.client_descrs[i].fd,
+			state.clients[i].descriptor.fd,
 			buffer, TTY_BUFFER_SIZE , 0
 		);
 		if(count == 0) {
-			assert(close(state.client_descrs[i].fd) == 0);
-			state.client_descrs[i].fd = -1;
-			io_fifo_del(state.cpubound_fifos[i]);
-			io_fifo_del(state.ttybound_fifos[i]);
+			assert(close(state.clients[i].descriptor.fd) == 0);
+			state.clients[i].descriptor.fd = -1;
+			io_fifo_del(state.clients[i].cpubound_fifo);
+			io_fifo_del(state.clients[i].ttybound_fifo);
 			ipm_interrupt(state.irq_cpu, 2);
 			printf("Disconnected: TTY%d\n", i + 1);
 			continue;
 		} else assert(count > 0);
 		printf("TTY%d: Got %ld byte(s)\n", i + 1, count);
 
-		uint32_t fifo_space = io_fifo_space(state.cpubound_fifos[i]);
+		uint32_t fifo_space = io_fifo_space(state.clients[i].cpubound_fifo);
 		if(count > fifo_space) {
 			ssize_t difference = count - fifo_space;
 			printf("TTY%d: Tossing %ld CPU-bound bytes(s)\n", i + 1, difference);
@@ -83,7 +85,7 @@ static bool handle_client_reads(void) {
 		}
 		for(int j = 0; j < count; j++) {
 			uint32_t data = buffer[j];
-			io_fifo_write(state.cpubound_fifos[i], &data);
+			io_fifo_write(state.clients[i].cpubound_fifo, &data);
 		}
 		send_irq = true;
 	}
@@ -93,19 +95,19 @@ static bool handle_client_reads(void) {
 // TODO: Refactor handle_client_writes
 static void handle_client_writes(void) {
 	for(int i = 0; i < TTY_MAX_CLIENTS; i++) {
-		if(state.client_descrs[i].fd == -1) continue;
+		if(state.clients[i].descriptor.fd == -1) continue;
 		uint32_t count = (1 << IO_FIFO_SIZE_BITS);
-		count -= io_fifo_space(state.ttybound_fifos[i]);
+		count -= io_fifo_space(state.clients[i].ttybound_fifo);
 		if(count == 0) continue;
 
 		unsigned char buffer[TTY_BUFFER_SIZE];
 		for(unsigned j = 0; j < count; j++) {
 			uint32_t data;
-			io_fifo_read(state.ttybound_fifos[i], &data);
+			io_fifo_read(state.clients[i].ttybound_fifo, &data);
 			buffer[j] = (unsigned char)(data & 0xFF);
 		}
 
-		assert(send(state.client_descrs[i].fd, buffer, count, 0) == count);
+		assert(send(state.clients[i].descriptor.fd, buffer, count, 0) == count);
 		printf("TTY%d: Sent %u byte(s)\n", i + 1, count);
 	}
 }
@@ -133,7 +135,7 @@ static void ttycon_callback(bool rw_select, uint32_t *rw_data, void *context) {
 	assert(!rw_select);
 	pthread_mutex_lock(&state.mutex);
 	for(int i = 0; i < TTY_MAX_CLIENTS; i++)
-		if(state.client_descrs[i].fd != -1)
+		if(state.clients[i].descriptor.fd != -1)
 			*rw_data |= 1 << i;
 	pthread_mutex_unlock(&state.mutex);
 }
@@ -143,8 +145,8 @@ static void ttyreq_callback(bool rw_select, uint32_t *rw_data, void *context) {
 	assert(!rw_select);
 	pthread_mutex_lock(&state.mutex);
 	for(int i = 0; i < TTY_MAX_CLIENTS; i++) {
-		if(state.client_descrs[i].fd == -1) continue;
-		if(io_fifo_space(state.cpubound_fifos[i]) < (1 << IO_FIFO_SIZE_BITS))
+		if(state.clients[i].descriptor.fd == -1) continue;
+		if(io_fifo_space(state.clients[i].cpubound_fifo) < (1 << IO_FIFO_SIZE_BITS))
 			*rw_data |= 1 << i;
 	}
 	pthread_mutex_unlock(&state.mutex);
@@ -161,9 +163,9 @@ static void ttydata_callback(bool rw_select, uint32_t *rw_data, void *context) {
 	unsigned tty_select = state.dev_select & ((1 << 5) - 1);
 	if(tty_select >= TTY_MAX_CLIENTS) return;
 	pthread_mutex_lock(&state.mutex);
-	if(state.client_descrs[tty_select].fd != -1) {
-		if(rw_select) io_fifo_write(state.ttybound_fifos[tty_select], rw_data);
-		else if(!io_fifo_read(state.cpubound_fifos[tty_select], rw_data))
+	if(state.clients[tty_select].descriptor.fd != -1) {
+		if(rw_select) io_fifo_write(state.clients[tty_select].ttybound_fifo, rw_data);
+		else if(!io_fifo_read(state.clients[tty_select].cpubound_fifo, rw_data))
 			*rw_data = 0x80000000; // If the FIFO was empty, signal using sign bit
 	}
 	pthread_mutex_unlock(&state.mutex);
@@ -176,20 +178,21 @@ static void ttystat_callback(bool rw_select, uint32_t *rw_data, void *context) {
 	bool buffer_select = ((state.dev_select & (1 << 5)) != 0);
 	if(tty_select >= TTY_MAX_CLIENTS) return;
 	pthread_mutex_lock(&state.mutex);
-	if(state.client_descrs[tty_select].fd != -1) {
-		if(buffer_select) *rw_data = io_fifo_space(state.ttybound_fifos[tty_select]);
-		else *rw_data = io_fifo_space(state.cpubound_fifos[tty_select]);
+	if(state.clients[tty_select].descriptor.fd != -1) {
+		if(buffer_select) *rw_data = io_fifo_space(state.clients[tty_select].ttybound_fifo);
+		else *rw_data = io_fifo_space(state.clients[tty_select].cpubound_fifo);
 	}
 	pthread_mutex_unlock(&state.mutex);
 }
 
 bool tty_setup(io_t io, cpu_t *irq_cpu, uint16_t server_port) {
+	printf("%ld\n", sizeof state);
 	if(state.init) return false;
 
 	state.server_descr.events = POLLIN;
 	for(int i = 0; i < TTY_MAX_CLIENTS; i++) {
-		state.client_descrs[i].fd = -1; // ignored by poll
-		state.client_descrs[i].events = POLLIN;
+		state.clients[i].descriptor.fd = -1; // ignored by poll
+		state.clients[i].descriptor.events = POLLIN;
 	}
 
 	struct sockaddr_in descriptor;
@@ -229,10 +232,10 @@ bool tty_close(io_t io) {
 
 	assert(close(state.server_descr.fd) == 0);
 	for(int i = 0; i < TTY_MAX_CLIENTS; i++) {
-		if(state.client_descrs[i].fd == -1) continue;
-		assert(close(state.client_descrs[i].fd) == 0);
-		io_fifo_del(state.cpubound_fifos[i]);
-		io_fifo_del(state.ttybound_fifos[i]);
+		if(state.clients[i].descriptor.fd == -1) continue;
+		assert(close(state.clients[i].descriptor.fd) == 0);
+		io_fifo_del(state.clients[i].cpubound_fifo);
+		io_fifo_del(state.clients[i].ttybound_fifo);
 		printf("Disconnected: TTY%d\n", i + 1);
 	}
 

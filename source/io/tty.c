@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <stdatomic.h>
 
+#include <errno.h>
 #include <poll.h>
 #include <pthread.h>
 #include <unistd.h>
@@ -29,12 +30,12 @@ static struct {
 	} clients[TTY_MAX_CLIENTS];
 } state = {0};
 
-static void handle_new_client(
+static bool setup_client(
 	struct pollfd *server_descr,
 	struct client_state client_pool[TTY_MAX_CLIENTS]
 ) {
 	assert(poll(server_descr, 1, 0) >= 0);
-	if(!(server_descr->revents & POLLIN)) return;
+	if(!(server_descr->revents & POLLIN)) return false;
 
 	int new_client = accept(server_descr->fd, NULL, NULL);
 	assert(new_client >= 0);
@@ -45,7 +46,6 @@ static void handle_new_client(
 		client_pool[i].cpubound_fifo = io_fifo_new();
 		client_pool[i].ttybound_fifo = io_fifo_new();
 		client_pool[i].descriptor.fd = new_client;
-		ipm_interrupt(state.irq_cpu, 2);
 		printf("Connected: TTY%d\n", i + 1);
 		found = true;
 		break;
@@ -55,44 +55,39 @@ static void handle_new_client(
 		assert(close(new_client) == 0);
 		printf("Connected: Refused!\n");
 	}
+
+	return found;
+}
+
+static void close_client(struct client_state *client) {
+	assert(close(client->descriptor.fd) == 0);
+	client->descriptor.fd = -1;
+	io_fifo_del(client->cpubound_fifo);
+	io_fifo_del(client->ttybound_fifo);
+	printf("Disconnected: TTY%d\n", client->id);
 }
 
 static bool handle_client_read(struct client_state *client) {
-	assert(poll(&client->descriptor, 1, 0) >= 0);
-	if(client->descriptor.fd == -1) return false;
-	if(!(client->descriptor.revents & POLLIN)) return false;
-
 	unsigned char buffer[TTY_BUFFER_SIZE];
-	ssize_t count = recv(
-		client->descriptor.fd,
-		buffer, TTY_BUFFER_SIZE , 0
-	);
-	if(count == 0) {
-		assert(close(client->descriptor.fd) == 0);
-		client->descriptor.fd = -1;
-		io_fifo_del(client->cpubound_fifo);
-		io_fifo_del(client->ttybound_fifo);
-		ipm_interrupt(state.irq_cpu, 2);
-		printf("Disconnected: TTY%d\n", client->id);
-		return false;
-	} else assert(count > 0);
-	printf("TTY%d: Got %ld byte(s)\n", client->id, count);
+	ssize_t count = recv(client->descriptor.fd, buffer, TTY_BUFFER_SIZE, 0);
+	if(count == 0 || (count == -1 && errno == ECONNRESET)) return false;
 
+	printf("TTY%d: Got %ld byte(s)\n", client->id, count);
 	uint32_t fifo_space = io_fifo_space(client->cpubound_fifo);
-		if(count > fifo_space) {
-		ssize_t difference = count - fifo_space;
-		printf("TTY%d: Tossing %ld CPU-bound bytes(s)\n", client->id, difference);
+	if(count > fifo_space) {
+		printf("TTY%d: Tossing %ld CPU-bound bytes(s)\n",client->id, count - fifo_space);
 		count = fifo_space;
 	}
+
 	for(int j = 0; j < count; j++) {
 		uint32_t data = buffer[j];
 		io_fifo_write(client->cpubound_fifo, &data);
 	}
+
 	return true;
 }
 
 static void handle_client_write(struct client_state *client) {
-	if(client->descriptor.fd == -1) return;
 	uint32_t count = (1 << IO_FIFO_SIZE_BITS);
 	count -= io_fifo_space(client->ttybound_fifo);
 	if(count == 0) return;
@@ -104,7 +99,8 @@ static void handle_client_write(struct client_state *client) {
 		buffer[j] = (unsigned char)(data & 0xFF);
 	}
 
-	assert(send(client->descriptor.fd, buffer, count, 0) == count);
+	ssize_t ret = send(client->descriptor.fd, buffer, count, 0);
+	assert(ret  == count);
 	printf("TTY%d: Sent %u byte(s)\n", client->id, count);
 }
 
@@ -114,16 +110,32 @@ static void *tty_thread(void *dummy) {
 	while(state.init) {
 		pthread_mutex_lock(&state.mutex);
 
-		handle_new_client(&state.server_descr, state.clients);
-		bool send_irq = false;
+		bool send_irq = setup_client(&state.server_descr, state.clients);
 		for(int i = 0; i < TTY_MAX_CLIENTS; i++) {
 			struct client_state *client = &state.clients[i];
-			send_irq |= handle_client_read(client);
-			handle_client_write(client);
+			if(client->descriptor.fd == -1) continue;
+
+			assert(poll(&client->descriptor, 1, 0) >= 0);
+			if(client->descriptor.revents & POLLHUP) {
+				close_client(client);
+				send_irq = true;
+				continue;
+			}
+
+			bool still_open = true;
+			if(client->descriptor.revents & POLLIN) {
+				still_open = handle_client_read(client);
+				if(!still_open) close_client(client);
+				send_irq = true;
+			}
+
+			if((client->descriptor.revents & POLLOUT) && still_open)
+				handle_client_write(client);
 		}
-		if(send_irq) ipm_interrupt(state.irq_cpu, 2);
 
 		pthread_mutex_unlock(&state.mutex);
+		if(send_irq) ipm_interrupt(state.irq_cpu, 2);
+
 		struct timespec duration = {0, 100 * 1000}; // 100us
 		nanosleep(&duration, NULL);
 	}
@@ -188,10 +200,10 @@ static void ttystat_callback(bool rw_select, uint32_t *rw_data, void *context) {
 bool tty_setup(io_t io, cpu_t *irq_cpu, uint16_t server_port) {
 	if(state.init) return false;
 
-	state.server_descr.events = POLLIN;
+	state.server_descr.events = POLLIN; // informs of waiting clients
 	for(int i = 0; i < TTY_MAX_CLIENTS; i++) {
 		state.clients[i].descriptor.fd = -1; // ignored by poll
-		state.clients[i].descriptor.events = POLLIN;
+		state.clients[i].descriptor.events = POLLIN | POLLOUT;
 		state.clients[i].id = i + 1;
 	}
 

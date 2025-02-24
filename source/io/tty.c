@@ -23,12 +23,28 @@ static struct {
 	struct pollfd server_descr;
 
 	struct client_state {
-		int id;
 		struct pollfd descriptor;
 		io_fifo_t cpubound_fifo;
 		io_fifo_t ttybound_fifo;
+		int id;
+		enum read_state {
+			READ_START = 0,
+			READ_START_CR,
+			READ_IAC,  READ_CMD,
+			READ_SUB1, READ_SUB2
+		} read_state: 16;
+		enum write_state {
+			WRITE_START = 0,
+			WRITE_START_CR,
+		} write_state: 16;
 	} clients[TTY_MAX_CLIENTS];
 } state = {0};
+
+static const uint8_t telnet_preamble[] = {
+	255, 251, 0, // IAC WILL ECHO
+	255, 251, 1, // IAC WILL BIN
+	255, 251, 3  // IAC WILL SGA
+};
 
 static bool setup_client(
 	struct pollfd *server_descr,
@@ -43,10 +59,13 @@ static bool setup_client(
 	bool found = false;
 	for(int i = 0; i < TTY_MAX_CLIENTS; i++) {
 		if(client_pool[i].descriptor.fd != -1) continue;
+		ssize_t size = (ssize_t)(sizeof telnet_preamble);
+		if(send(new_client, telnet_preamble, size, 0) != size) break;
+
 		client_pool[i].cpubound_fifo = io_fifo_new();
 		client_pool[i].ttybound_fifo = io_fifo_new();
 		client_pool[i].descriptor.fd = new_client;
-		printf("Connected: TTY%d\n", i + 1);
+		printf("Connected: TTY%d\n", client_pool[i].id);
 		found = true;
 		break;
 	}
@@ -68,19 +87,62 @@ static void close_client(struct client_state *client) {
 }
 
 static bool handle_client_read(struct client_state *client) {
-	unsigned char buffer[TTY_BUFFER_SIZE];
-	ssize_t count = recv(client->descriptor.fd, buffer, TTY_BUFFER_SIZE, 0);
-	if(count == 0 || (count == -1 && errno == ECONNRESET)) return false;
+	unsigned char raw_buffer[TTY_BUFFER_SIZE];
+	int raw_count = recv(client->descriptor.fd, raw_buffer, TTY_BUFFER_SIZE, 0);
+	if(raw_count == 0 || (raw_count == -1 && errno == ECONNRESET)) return false;
+	assert(raw_count > 0);
 
-	printf("TTY%d: Got %ld byte(s)\n", client->id, count);
-	uint32_t fifo_space = io_fifo_space(client->cpubound_fifo);
-	if(count > fifo_space) {
-		printf("TTY%d: Tossing %ld CPU-bound bytes(s)\n",client->id, count - fifo_space);
-		count = fifo_space;
+	unsigned char clean_buffer[TTY_BUFFER_SIZE];
+	unsigned clean_count = 0;
+	for(unsigned i = 0; i < (unsigned) raw_count; i++) {
+		unsigned char current = raw_buffer[i];
+		#define accept(C,S) if(current == C) { client->read_state = S; break; }
+		#define reject(C,S) if(current == C) { client->read_state = S; continue; }
+		switch(client->read_state) {
+			case READ_START:
+				accept(0x0D, READ_START_CR)
+				reject(0xFF, READ_IAC)
+				accept(current, READ_START)
+				break;
+			case READ_START_CR:
+				reject(0x00, READ_START)
+				accept(current, READ_START)
+				break;
+			case READ_IAC:
+				accept(0xFF, READ_START)
+				reject(0xFA, READ_SUB1)
+				reject(0xFB, READ_CMD)
+				reject(0xFC, READ_CMD)
+				reject(0xFD, READ_CMD)
+				reject(0xFE, READ_CMD)
+				reject(current, READ_START)
+				break;
+			case READ_CMD:
+				reject(current, READ_START)
+				break;
+			case READ_SUB1:
+				reject(0xFF, READ_SUB2)
+				reject(current, READ_SUB1)
+				break;
+			case READ_SUB2:
+				reject(0xF0, READ_START)
+				reject(current, READ_SUB1)
+				break;
+		}
+		#undef accept
+		#undef reject
+		clean_buffer[clean_count++] = current;
 	}
 
-	for(int j = 0; j < count; j++) {
-		uint32_t data = buffer[j];
+	printf("TTY%d: Got %u/%u byte(s)\n", client->id, clean_count, raw_count);
+	uint32_t fifo_space = io_fifo_space(client->cpubound_fifo);
+	if(clean_count > fifo_space) {
+		printf("TTY%d: Tossing %d CPU-bound bytes(s)\n", client->id, clean_count - fifo_space);
+		clean_count = fifo_space;
+	}
+
+	for(unsigned i = 0; i < clean_count; i++) {
+		uint32_t data = clean_buffer[i];
 		io_fifo_write(client->cpubound_fifo, &data);
 	}
 
@@ -88,23 +150,37 @@ static bool handle_client_read(struct client_state *client) {
 }
 
 static void handle_client_write(struct client_state *client) {
-	uint32_t count = (1 << IO_FIFO_SIZE_BITS);
-	count -= io_fifo_space(client->ttybound_fifo);
-	if(count == 0) return;
+	uint32_t clean_count = (1 << IO_FIFO_SIZE_BITS);
+	clean_count -= io_fifo_space(client->ttybound_fifo);
+	if(clean_count == 0) return;
 
-	unsigned char buffer[TTY_BUFFER_SIZE];
-	for(unsigned j = 0; j < count; j++) {
-		uint32_t data;
-		io_fifo_read(client->ttybound_fifo, &data);
-		buffer[j] = (unsigned char)(data & 0xFF);
+	// Twice the TTY_BUFFER_SIZE is fool-proof because, only for CR and IAC,
+	// there will need to be another character afterwards and the rest are 1-1.
+	// So it is enough to allocate double for the worst case of all CR/IAC.
+	unsigned char raw_buffer[TTY_BUFFER_SIZE * 2];
+	unsigned raw_count = 0;
+	for(unsigned i = 0; i < clean_count; i++) {
+		uint32_t data; io_fifo_read(client->ttybound_fifo, &data);
+		unsigned char current = (unsigned char)(data & 0xFF);
+		switch(client->write_state) {
+			case WRITE_START:
+				if(current != 0x0D) client->write_state = WRITE_START;
+				else client->write_state = WRITE_START_CR;
+				if(current == 0xFF) raw_buffer[raw_count++] = current;
+				raw_buffer[raw_count++] = current;
+				break;
+			case WRITE_START_CR:
+				client->write_state = WRITE_START;
+				if(current != 0x0A) raw_buffer[raw_count++] = 0x00;
+				raw_buffer[raw_count++] = current;
+				break;
+		}
 	}
 
-	ssize_t ret = send(client->descriptor.fd, buffer, count, 0);
-	assert(ret  == count);
-	printf("TTY%d: Sent %u byte(s)\n", client->id, count);
+	assert(send(client->descriptor.fd, raw_buffer, raw_count, 0)  == raw_count);
+	printf("TTY%d: Sent %u/%u byte(s)\n", client->id, clean_count, raw_count);
 }
 
-// TODO: Add state machine to abstract the telnet protocol
 static void *tty_thread(void *dummy) {
 	(void) dummy;
 	while(state.init) {

@@ -164,8 +164,8 @@ static void handle_client_write(struct client_state *client) {
 		unsigned char current = (unsigned char)(data & 0xFF);
 		switch(client->write_state) {
 			case WRITE_START:
-				if(current != 0x0D) client->write_state = WRITE_START;
-				else client->write_state = WRITE_START_CR;
+				if(current == 0x0D) client->write_state = WRITE_START_CR;
+				else client->write_state = WRITE_START;
 				if(current == 0xFF) raw_buffer[raw_count++] = current;
 				raw_buffer[raw_count++] = current;
 				break;
@@ -177,7 +177,7 @@ static void handle_client_write(struct client_state *client) {
 		}
 	}
 
-	assert(send(client->descriptor.fd, raw_buffer, raw_count, 0)  == raw_count);
+	assert(send(client->descriptor.fd, raw_buffer, raw_count, 0) == raw_count);
 	printf("TTY%d: Sent %u/%u byte(s)\n", client->id, clean_count, raw_count);
 }
 
@@ -281,6 +281,8 @@ bool tty_setup(io_t io, cpu_t *irq_cpu, uint16_t server_port) {
 		state.clients[i].descriptor.fd = -1; // ignored by poll
 		state.clients[i].descriptor.events = POLLIN | POLLOUT;
 		state.clients[i].id = i + 1;
+		state.clients[i].read_state = READ_START;
+		state.clients[i].write_state = WRITE_START;
 	}
 
 	struct sockaddr_in descriptor;
@@ -321,10 +323,7 @@ bool tty_close(io_t io) {
 	assert(close(state.server_descr.fd) == 0);
 	for(int i = 0; i < TTY_MAX_CLIENTS; i++) {
 		if(state.clients[i].descriptor.fd == -1) continue;
-		assert(close(state.clients[i].descriptor.fd) == 0);
-		io_fifo_del(state.clients[i].cpubound_fifo);
-		io_fifo_del(state.clients[i].ttybound_fifo);
-		printf("Disconnected: TTY%d\n", i + 1);
+		close_client(&state.clients[i]);
 	}
 
 	assert(io_try_detach(io, IO_TTYCON,  NULL, NULL));

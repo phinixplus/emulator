@@ -14,29 +14,34 @@
 #include "io/portdefs.h"
 
 static struct {
-	atomic_bool init;
+	atomic_bool is_init;
 	cpu_t *irq_cpu;
-	unsigned dev_select;
 
 	pthread_mutex_t mutex;
 	pthread_t server_thread;
 	struct pollfd server_descr;
 
+	uint32_t dev_select;
+	uint32_t req_bitmap;
+
 	struct client_state {
 		struct pollfd descriptor;
 		io_fifo_t cpubound_fifo;
 		io_fifo_t ttybound_fifo;
-		int id;
+		uint16_t cpubound_fifo_threshold;
+		uint16_t ttybound_fifo_threshold;
+		uint8_t displayed_id;
+		uint8_t reserved; // Might use this later
 		enum read_state {
 			READ_START = 0,
 			READ_START_CR,
 			READ_IAC,  READ_CMD,
 			READ_SUB1, READ_SUB2
-		} read_state: 16;
+		} read_state : 8;
 		enum write_state {
 			WRITE_START = 0,
 			WRITE_START_CR,
-		} write_state: 16;
+		} write_state : 8;
 	} clients[TTY_MAX_CLIENTS];
 } state = {0};
 
@@ -65,7 +70,7 @@ static bool setup_client(
 		client_pool[i].cpubound_fifo = io_fifo_new();
 		client_pool[i].ttybound_fifo = io_fifo_new();
 		client_pool[i].descriptor.fd = new_client;
-		printf("Connected: TTY%d\n", client_pool[i].id);
+		printf("Connected: TTY%u\n", client_pool[i].displayed_id);
 		found = true;
 		break;
 	}
@@ -83,7 +88,7 @@ static void close_client(struct client_state *client) {
 	client->descriptor.fd = -1;
 	io_fifo_del(client->cpubound_fifo);
 	io_fifo_del(client->ttybound_fifo);
-	printf("Disconnected: TTY%d\n", client->id);
+	printf("Disconnected: TTY%u\n", client->displayed_id);
 }
 
 static bool handle_client_read(struct client_state *client) {
@@ -134,10 +139,12 @@ static bool handle_client_read(struct client_state *client) {
 		clean_buffer[clean_count++] = current;
 	}
 
-	printf("TTY%d: Got %u/%u byte(s)\n", client->id, clean_count, raw_count);
-	uint32_t fifo_space = io_fifo_space(client->cpubound_fifo);
+	printf("TTY%u: Got %u/%u byte(s)\n",
+		client->displayed_id, clean_count, raw_count);
+	uint32_t fifo_space = io_fifo_space_free(client->cpubound_fifo);
 	if(clean_count > fifo_space) {
-		printf("TTY%d: Tossing %d CPU-bound bytes(s)\n", client->id, clean_count - fifo_space);
+		printf("TTY%u: Tossing %d CPU-bound bytes(s)\n",
+			client->displayed_id, clean_count - fifo_space);
 		clean_count = fifo_space;
 	}
 
@@ -150,8 +157,7 @@ static bool handle_client_read(struct client_state *client) {
 }
 
 static void handle_client_write(struct client_state *client) {
-	uint32_t clean_count = (1 << IO_FIFO_SIZE_BITS);
-	clean_count -= io_fifo_space(client->ttybound_fifo);
+	uint32_t clean_count = io_fifo_space_used(client->ttybound_fifo);
 	if(clean_count == 0) return;
 
 	// Twice the TTY_BUFFER_SIZE is fool-proof because, only for CR and IAC,
@@ -178,12 +184,12 @@ static void handle_client_write(struct client_state *client) {
 	}
 
 	assert(send(client->descriptor.fd, raw_buffer, raw_count, 0) == raw_count);
-	printf("TTY%d: Sent %u/%u byte(s)\n", client->id, clean_count, raw_count);
+	printf("TTY%u: Sent %u/%u byte(s)\n", client->displayed_id, clean_count, raw_count);
 }
 
 static void *tty_thread(void *dummy) {
 	(void) dummy;
-	while(state.init) {
+	while(state.is_init) {
 		pthread_mutex_lock(&state.mutex);
 
 		bool send_irq = setup_client(&state.server_descr, state.clients);
@@ -234,7 +240,7 @@ static void ttyreq_callback(bool rw_select, uint32_t *rw_data, void *context) {
 	pthread_mutex_lock(&state.mutex);
 	for(int i = 0; i < TTY_MAX_CLIENTS; i++) {
 		if(state.clients[i].descriptor.fd == -1) continue;
-		if(io_fifo_space(state.clients[i].cpubound_fifo) < (1 << IO_FIFO_SIZE_BITS))
+		if(io_fifo_space_used(state.clients[i].cpubound_fifo) != 0)
 			*rw_data |= 1 << i;
 	}
 	pthread_mutex_unlock(&state.mutex);
@@ -242,7 +248,7 @@ static void ttyreq_callback(bool rw_select, uint32_t *rw_data, void *context) {
 
 static void ttysel_callback(bool rw_select, uint32_t *rw_data, void *context) {
 	(void) context;
-	if(rw_select) state.dev_select = *rw_data & ((1 << 6) - 1);
+	if(rw_select) state.dev_select = *rw_data & ((1 << 7) - 1);
 	else *rw_data = state.dev_select;
 }
 
@@ -267,20 +273,20 @@ static void ttystat_callback(bool rw_select, uint32_t *rw_data, void *context) {
 	if(tty_select >= TTY_MAX_CLIENTS) return;
 	pthread_mutex_lock(&state.mutex);
 	if(state.clients[tty_select].descriptor.fd != -1) {
-		if(buffer_select) *rw_data = io_fifo_space(state.clients[tty_select].ttybound_fifo);
-		else *rw_data = io_fifo_space(state.clients[tty_select].cpubound_fifo);
+		if(buffer_select) *rw_data = io_fifo_space_free(state.clients[tty_select].ttybound_fifo);
+		else *rw_data = io_fifo_space_free(state.clients[tty_select].cpubound_fifo);
 	}
 	pthread_mutex_unlock(&state.mutex);
 }
 
 bool tty_setup(io_t io, cpu_t *irq_cpu, uint16_t server_port) {
-	if(state.init) return false;
+	if(state.is_init) return false;
 
 	state.server_descr.events = POLLIN; // informs of waiting clients
-	for(int i = 0; i < TTY_MAX_CLIENTS; i++) {
+	for(unsigned i = 0; i < TTY_MAX_CLIENTS; i++) {
 		state.clients[i].descriptor.fd = -1; // ignored by poll
 		state.clients[i].descriptor.events = POLLIN | POLLOUT;
-		state.clients[i].id = i + 1;
+		state.clients[i].displayed_id = i + 1;
 		state.clients[i].read_state = READ_START;
 		state.clients[i].write_state = WRITE_START;
 	}
@@ -309,13 +315,13 @@ bool tty_setup(io_t io, cpu_t *irq_cpu, uint16_t server_port) {
 	pthread_mutex_init(&state.mutex, NULL);
 	pthread_create(&state.server_thread, NULL, tty_thread, NULL);
 
-	state.init = true;
+	state.is_init = true;
 	return true;
 }
 
 bool tty_close(io_t io) {
-	if(!state.init) return false;
-	state.init = false;
+	if(!state.is_init) return false;
+	state.is_init = false;
 
 	pthread_join(state.server_thread, NULL);
 	pthread_mutex_destroy(&state.mutex);

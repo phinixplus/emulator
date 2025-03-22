@@ -119,7 +119,7 @@ typedef struct io_fifo_object {
 
 io_fifo_t io_fifo_new(void) {
 	size_t size = sizeof(io_fifo_object_t);
-	size += (1 << IO_FIFO_SIZE_BITS) * sizeof(uint32_t);
+	size += IO_FIFO_SIZE * sizeof(uint32_t);
 	io_fifo_t fifo = (io_fifo_t) calloc(1, size);
 	if(fifo == NULL) return NULL;
 	pthread_mutex_init(&fifo->mutex, NULL);
@@ -138,7 +138,7 @@ bool io_fifo_read(io_fifo_t fifo, uint32_t *data) {
 		pthread_mutex_unlock(&fifo->mutex);
 		return false;
 	}
-	*data = fifo->buffer[fifo->ridx & ((1 << IO_FIFO_SIZE_BITS) - 1)];
+	*data = fifo->buffer[fifo->ridx & (IO_FIFO_SIZE - 1)];
 	fifo->ridx = (fifo->ridx + 1) & ((1 << (IO_FIFO_SIZE_BITS + 1)) - 1);
 	pthread_mutex_unlock(&fifo->mutex);
 	return true;
@@ -146,21 +146,30 @@ bool io_fifo_read(io_fifo_t fifo, uint32_t *data) {
 
 bool io_fifo_write(io_fifo_t fifo, uint32_t *data) {
 	pthread_mutex_lock(&fifo->mutex);
-	if((fifo->widx ^ fifo->ridx) == 1 << IO_FIFO_SIZE_BITS) {
+	if((fifo->widx ^ fifo->ridx) == IO_FIFO_SIZE) {
 		pthread_mutex_unlock(&fifo->mutex);
 		return false;
 	}
-	fifo->buffer[fifo->widx & ((1 << IO_FIFO_SIZE_BITS) - 1)] = *data;
+	fifo->buffer[fifo->widx & (IO_FIFO_SIZE - 1)] = *data;
 	fifo->widx = (fifo->widx + 1) & ((1 << (IO_FIFO_SIZE_BITS + 1)) - 1);
 	pthread_mutex_unlock(&fifo->mutex);
 	return true;
 }
 
-uint32_t io_fifo_space(io_fifo_t fifo) {
+uint32_t io_fifo_space_used(io_fifo_t fifo) {
+	uint32_t used = 0;
 	pthread_mutex_lock(&fifo->mutex);
-	uint32_t space = 1 << IO_FIFO_SIZE_BITS;
-	if((fifo->widx ^ fifo->ridx) == 1 << IO_FIFO_SIZE_BITS) space = 0;
-	else space -= (fifo->widx - fifo->ridx) & ((1 << IO_FIFO_SIZE_BITS) - 1);
+	if((fifo->widx ^ fifo->ridx) == IO_FIFO_SIZE) used = IO_FIFO_SIZE;
+	else used = (fifo->widx - fifo->ridx) & (IO_FIFO_SIZE - 1);
 	pthread_mutex_unlock(&fifo->mutex);
-	return space;
+	return used;
+}
+
+uint32_t io_fifo_space_free(io_fifo_t fifo) {
+	uint32_t free = IO_FIFO_SIZE;
+	pthread_mutex_lock(&fifo->mutex);
+	if((fifo->widx ^ fifo->ridx) == IO_FIFO_SIZE) free = 0;
+	else free -= (fifo->widx - fifo->ridx) & (IO_FIFO_SIZE - 1);
+	pthread_mutex_unlock(&fifo->mutex);
+	return free;
 }

@@ -189,7 +189,7 @@ static void handle_client_write(struct client_state *client) {
 
 static void *tty_thread(void *dummy) {
 	(void) dummy;
-	while(state.is_init) {
+	while(atomic_load(&state.is_init)) {
 		pthread_mutex_lock(&state.mutex);
 
 		bool send_irq = setup_client(&state.server_descr, state.clients);
@@ -228,28 +228,19 @@ static void ttycon_callback(bool rw_select, uint32_t *rw_data, void *context) {
 	(void) context;
 	assert(!rw_select);
 	pthread_mutex_lock(&state.mutex);
-	for(int i = 0; i < TTY_MAX_CLIENTS; i++)
-		if(state.clients[i].descriptor.fd != -1)
-			*rw_data |= 1 << i;
+	for(int i = 0; i < TTY_MAX_CLIENTS; i++) {
+		if(state.clients[i].descriptor.fd == -1) continue;
+		if(io_fifo_space_used(state.clients[i].cpubound_fifo) != 0)
+			state.req_bitmap |= 1 << i;
+		*rw_data |= 1 << i;
+	}
 	pthread_mutex_unlock(&state.mutex);
 }
 
 static void ttyreq_callback(bool rw_select, uint32_t *rw_data, void *context) {
 	(void) context;
-	assert(!rw_select);
-	pthread_mutex_lock(&state.mutex);
-	for(int i = 0; i < TTY_MAX_CLIENTS; i++) {
-		if(state.clients[i].descriptor.fd == -1) continue;
-		if(io_fifo_space_used(state.clients[i].cpubound_fifo) != 0)
-			*rw_data |= 1 << i;
-	}
-	pthread_mutex_unlock(&state.mutex);
-}
-
-static void ttysel_callback(bool rw_select, uint32_t *rw_data, void *context) {
-	(void) context;
 	if(rw_select) state.dev_select = *rw_data & ((1 << 7) - 1);
-	else *rw_data = state.dev_select;
+	else *rw_data = state.req_bitmap;
 }
 
 static void ttydata_callback(bool rw_select, uint32_t *rw_data, void *context) {
@@ -280,7 +271,7 @@ static void ttystat_callback(bool rw_select, uint32_t *rw_data, void *context) {
 }
 
 bool tty_setup(io_t io, cpu_t *irq_cpu, uint16_t server_port) {
-	if(state.is_init) return false;
+	if(atomic_load(&state.is_init)) return false;
 
 	state.server_descr.events = POLLIN; // informs of waiting clients
 	for(unsigned i = 0; i < TTY_MAX_CLIENTS; i++) {
@@ -308,20 +299,19 @@ bool tty_setup(io_t io, cpu_t *irq_cpu, uint16_t server_port) {
 
 	assert(io_try_attach(io, IO_TTYCON,  ttycon_callback,  NULL));
 	assert(io_try_attach(io, IO_TTYREQ,  ttyreq_callback,  NULL));
-	assert(io_try_attach(io, IO_TTYSEL,  ttysel_callback,  NULL));
 	assert(io_try_attach(io, IO_TTYDATA, ttydata_callback, NULL));
 	assert(io_try_attach(io, IO_TTYSTAT, ttystat_callback, NULL));
 
 	pthread_mutex_init(&state.mutex, NULL);
 	pthread_create(&state.server_thread, NULL, tty_thread, NULL);
 
-	state.is_init = true;
+	atomic_store(&state.is_init, true);
 	return true;
 }
 
 bool tty_close(io_t io) {
-	if(!state.is_init) return false;
-	state.is_init = false;
+	if(!atomic_load(&state.is_init)) return false;
+	atomic_store(&state.is_init, false);
 
 	pthread_join(state.server_thread, NULL);
 	pthread_mutex_destroy(&state.mutex);
@@ -334,7 +324,6 @@ bool tty_close(io_t io) {
 
 	assert(io_try_detach(io, IO_TTYCON,  NULL, NULL));
 	assert(io_try_detach(io, IO_TTYREQ,  NULL, NULL));
-	assert(io_try_detach(io, IO_TTYSEL,  NULL, NULL));
 	assert(io_try_detach(io, IO_TTYDATA, NULL, NULL));
 	assert(io_try_detach(io, IO_TTYSTAT, NULL, NULL));
 

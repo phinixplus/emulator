@@ -28,7 +28,7 @@ out zr envcmd
 handle:
 add t0 zr 63
 sub t0 s1
-out t0 ttysel
+out t0 ttyreq
 
 li  at message
 mov t3 at

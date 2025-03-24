@@ -92,12 +92,12 @@ static void close_client(struct client_state *client) {
 }
 
 static bool handle_client_read(struct client_state *client) {
-	unsigned char raw_buffer[TTY_BUFFER_SIZE];
-	int raw_count = recv(client->descriptor.fd, raw_buffer, TTY_BUFFER_SIZE, 0);
+	unsigned char raw_buffer[IO_FIFO_SIZE];
+	int raw_count = recv(client->descriptor.fd, raw_buffer, IO_FIFO_SIZE, 0);
 	if(raw_count == 0 || (raw_count == -1 && errno == ECONNRESET)) return false;
 	assert(raw_count > 0);
 
-	unsigned char clean_buffer[TTY_BUFFER_SIZE];
+	unsigned char clean_buffer[IO_FIFO_SIZE];
 	unsigned clean_count = 0;
 	for(unsigned i = 0; i < (unsigned) raw_count; i++) {
 		unsigned char current = raw_buffer[i];
@@ -160,10 +160,10 @@ static void handle_client_write(struct client_state *client) {
 	uint32_t clean_count = io_fifo_space_used(client->ttybound_fifo);
 	if(clean_count == 0) return;
 
-	// Twice the TTY_BUFFER_SIZE is fool-proof because, only for CR and IAC,
+	// Twice the IO_FIFO_SIZE is fool-proof because, only for CR and IAC,
 	// there will need to be another character afterwards and the rest are 1-1.
 	// So it is enough to allocate double for the worst case of all CR/IAC.
-	unsigned char raw_buffer[TTY_BUFFER_SIZE * 2];
+	unsigned char raw_buffer[IO_FIFO_SIZE * 2];
 	unsigned raw_count = 0;
 	for(unsigned i = 0; i < clean_count; i++) {
 		uint32_t data; io_fifo_read(client->ttybound_fifo, &data);
@@ -227,46 +227,76 @@ static void *tty_thread(void *dummy) {
 static void ttycon_callback(bool rw_select, uint32_t *rw_data, void *context) {
 	(void) context;
 	assert(!rw_select);
+
 	pthread_mutex_lock(&state.mutex);
+
 	for(int i = 0; i < TTY_MAX_CLIENTS; i++) {
 		if(state.clients[i].descriptor.fd == -1) continue;
 		if(io_fifo_space_used(state.clients[i].cpubound_fifo) != 0)
 			state.req_bitmap |= 1 << i;
 		*rw_data |= 1 << i;
 	}
+
 	pthread_mutex_unlock(&state.mutex);
 }
 
 static void ttyreq_callback(bool rw_select, uint32_t *rw_data, void *context) {
 	(void) context;
-	if(rw_select) state.dev_select = *rw_data & ((1 << 7) - 1);
+	if(rw_select) state.dev_select = EXTRACT(*rw_data, 7, 0);
 	else *rw_data = state.req_bitmap;
 }
 
 static void ttydata_callback(bool rw_select, uint32_t *rw_data, void *context) {
 	(void) context;
-	unsigned tty_select = state.dev_select & ((1 << 5) - 1);
+	unsigned tty_select = EXTRACT(state.dev_select, 5, 0);
 	if(tty_select >= TTY_MAX_CLIENTS) return;
+	struct client_state *client = &state.clients[tty_select];
+
 	pthread_mutex_lock(&state.mutex);
-	if(state.clients[tty_select].descriptor.fd != -1) {
-		if(rw_select) io_fifo_write(state.clients[tty_select].ttybound_fifo, rw_data);
-		else if(!io_fifo_read(state.clients[tty_select].cpubound_fifo, rw_data))
-			*rw_data = 0x80000000; // If the FIFO was empty, signal using sign bit
+	if(client->descriptor.fd == -1) {
+		pthread_mutex_unlock(&state.mutex);
+		return;
 	}
+
+	if(rw_select) io_fifo_write(client->ttybound_fifo, rw_data);
+	else if(!io_fifo_read(client->cpubound_fifo, rw_data))
+		*rw_data = 0x80000000; // If the FIFO was empty, signal using sign bit
+
 	pthread_mutex_unlock(&state.mutex);
 }
 
 static void ttystat_callback(bool rw_select, uint32_t *rw_data, void *context) {
 	(void) context;
-	assert(!rw_select);
-	unsigned tty_select = state.dev_select & ((1 << 5) - 1);
-	bool buffer_select = ((state.dev_select & (1 << 5)) != 0);
+	unsigned tty_select = EXTRACT(state.dev_select, 5, 0);
+	unsigned csr_select = EXTRACT(state.dev_select, 2, 5);
 	if(tty_select >= TTY_MAX_CLIENTS) return;
+	struct client_state *client = &state.clients[tty_select];
+
 	pthread_mutex_lock(&state.mutex);
-	if(state.clients[tty_select].descriptor.fd != -1) {
-		if(buffer_select) *rw_data = io_fifo_space_free(state.clients[tty_select].ttybound_fifo);
-		else *rw_data = io_fifo_space_free(state.clients[tty_select].cpubound_fifo);
+	if(client->descriptor.fd == -1) {
+		pthread_mutex_unlock(&state.mutex);
+		return;
 	}
+
+	switch(csr_select) {
+		case 0: // Read CPU-bound buffer character amount
+			if(rw_select) break;
+			*rw_data = io_fifo_space_used(client->cpubound_fifo);
+			break;
+		case 1: // Read TTY-bound buffer free space
+			if(rw_select) break;
+			*rw_data = io_fifo_space_free(client->ttybound_fifo);
+			break;
+		case 2: // Read-Write CPU-bound IRQ thresshold
+			if(rw_select) client->cpubound_fifo_threshold = *rw_data;
+			else *rw_data = client->cpubound_fifo_threshold;
+			break;
+		case 3: // Read-Write TTY-bound IRQ thresshold
+			if(rw_select) client->ttybound_fifo_threshold = *rw_data;
+			else *rw_data = client->ttybound_fifo_threshold;
+			break;
+	}
+
 	pthread_mutex_unlock(&state.mutex);
 }
 

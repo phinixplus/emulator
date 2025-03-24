@@ -4,9 +4,14 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#define IO_ADDR_BITS 8
+// Utilities for Bitfields //
+
+#define MASK(WIDTH, OFFSET) (((1 << (WIDTH)) - 1) << (OFFSET))
+#define EXTRACT(SRC, WIDTH, OFFSET) (((SRC) & MASK(WIDTH, OFFSET)) >> (OFFSET))
 
 // IO Registry Section //
+
+#define IO_ADDR_BITS 8
 
 typedef void (*io_callback_t)(
 	bool rw_select,

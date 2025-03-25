@@ -287,11 +287,11 @@ static void ttystat_callback(bool rw_select, uint32_t *rw_data, void *context) {
 			if(rw_select) break;
 			*rw_data = io_fifo_space_free(client->ttybound_fifo);
 			break;
-		case 2: // Read-Write CPU-bound IRQ thresshold
+		case 2: // Read-Write CPU-bound IRQ threshold
 			if(rw_select) client->cpubound_fifo_threshold = *rw_data;
 			else *rw_data = client->cpubound_fifo_threshold;
 			break;
-		case 3: // Read-Write TTY-bound IRQ thresshold
+		case 3: // Read-Write TTY-bound IRQ threshold
 			if(rw_select) client->ttybound_fifo_threshold = *rw_data;
 			else *rw_data = client->ttybound_fifo_threshold;
 			break;

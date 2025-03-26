@@ -23,6 +23,7 @@ static struct {
 
 	uint32_t dev_select;
 	uint32_t req_bitmap;
+	uint32_t req_bitmap_sampled;
 
 	struct client_state {
 		struct pollfd descriptor;
@@ -51,18 +52,18 @@ static const uint8_t telnet_preamble[] = {
 	255, 251, 3  // IAC WILL SGA
 };
 
-static bool setup_client(
+static int setup_client(
 	struct pollfd *server_descr,
 	struct client_state client_pool[TTY_MAX_CLIENTS]
 ) {
 	assert(poll(server_descr, 1, 0) >= 0);
-	if(!(server_descr->revents & POLLIN)) return false;
+	if(!(server_descr->revents & POLLIN)) return -1;
 
 	int new_client = accept(server_descr->fd, NULL, NULL);
 	assert(new_client >= 0);
 
-	bool found = false;
-	for(int i = 0; i < TTY_MAX_CLIENTS; i++) {
+	int i = 0;
+	for(; i < TTY_MAX_CLIENTS; i++) {
 		if(client_pool[i].descriptor.fd != -1) continue;
 		ssize_t size = (ssize_t)(sizeof telnet_preamble);
 		if(send(new_client, telnet_preamble, size, 0) != size) break;
@@ -71,16 +72,16 @@ static bool setup_client(
 		client_pool[i].ttybound_fifo = io_fifo_new();
 		client_pool[i].descriptor.fd = new_client;
 		printf("Connected: TTY%u\n", client_pool[i].displayed_id);
-		found = true;
 		break;
 	}
+	if(i == TTY_MAX_CLIENTS) i = -1;
 
-	if(!found) {
+	if(i == -1) {
 		assert(close(new_client) == 0);
 		printf("Connected: Refused!\n");
 	}
 
-	return found;
+	return i;
 }
 
 static void close_client(struct client_state *client) {
@@ -156,9 +157,9 @@ static bool handle_client_read(struct client_state *client) {
 	return true;
 }
 
-static void handle_client_write(struct client_state *client) {
+static bool handle_client_write(struct client_state *client) {
 	uint32_t clean_count = io_fifo_space_used(client->ttybound_fifo);
-	if(clean_count == 0) return;
+	if(clean_count == 0) return true;
 
 	// Twice the IO_FIFO_SIZE is fool-proof because, only for CR and IAC,
 	// there will need to be another character afterwards and the rest are 1-1.
@@ -183,41 +184,40 @@ static void handle_client_write(struct client_state *client) {
 		}
 	}
 
-	assert(send(client->descriptor.fd, raw_buffer, raw_count, 0) == raw_count);
+	bool success = (send(client->descriptor.fd, raw_buffer, raw_count, 0) == raw_count);
 	printf("TTY%u: Sent %u/%u byte(s)\n", client->displayed_id, clean_count, raw_count);
+	return success;
+}
+
+static void process_events(void) {
+	pthread_mutex_lock(&state.mutex);
+
+	int new_client = setup_client(&state.server_descr, state.clients);
+	if(new_client != -1) state.req_bitmap |= MASK(1, new_client);
+
+	for(int i = 0; i < TTY_MAX_CLIENTS; i++) {
+		struct client_state *client = &state.clients[i];
+		if(client->descriptor.fd == -1) continue;
+
+		assert(poll(&client->descriptor, 1, 0) >= 0);
+
+		bool still_open = true;
+		if(client->descriptor.revents & POLLIN)
+			still_open &= handle_client_read(client);
+		if((client->descriptor.revents & POLLOUT) && still_open)
+			still_open &= handle_client_write(client);
+		if(client->descriptor.revents & POLLHUP || !still_open)
+			close_client(client), state.req_bitmap |= MASK(1, i);
+	}
+
+	pthread_mutex_unlock(&state.mutex);
 }
 
 static void *tty_thread(void *dummy) {
 	(void) dummy;
 	while(atomic_load(&state.is_init)) {
-		pthread_mutex_lock(&state.mutex);
-
-		bool send_irq = setup_client(&state.server_descr, state.clients);
-		for(int i = 0; i < TTY_MAX_CLIENTS; i++) {
-			struct client_state *client = &state.clients[i];
-			if(client->descriptor.fd == -1) continue;
-
-			assert(poll(&client->descriptor, 1, 0) >= 0);
-			if(client->descriptor.revents & POLLHUP) {
-				close_client(client);
-				send_irq = true;
-				continue;
-			}
-
-			bool still_open = true;
-			if(client->descriptor.revents & POLLIN) {
-				still_open = handle_client_read(client);
-				if(!still_open) close_client(client);
-				send_irq = true;
-			}
-
-			if((client->descriptor.revents & POLLOUT) && still_open)
-				handle_client_write(client);
-		}
-
-		pthread_mutex_unlock(&state.mutex);
-		if(send_irq) ipm_interrupt(state.irq_cpu, 2);
-
+		process_events();
+		if(state.req_bitmap != 0) ipm_interrupt(state.irq_cpu, 2);
 		struct timespec duration = {0, 100 * 1000}; // 100us
 		nanosleep(&duration, NULL);
 	}
@@ -233,7 +233,7 @@ static void ttycon_callback(bool rw_select, uint32_t *rw_data, void *context) {
 	for(int i = 0; i < TTY_MAX_CLIENTS; i++) {
 		if(state.clients[i].descriptor.fd == -1) continue;
 		if(io_fifo_space_used(state.clients[i].cpubound_fifo) != 0)
-			state.req_bitmap |= 1 << i;
+			state.req_bitmap_sampled |= 1 << i;
 		*rw_data |= 1 << i;
 	}
 
@@ -243,7 +243,7 @@ static void ttycon_callback(bool rw_select, uint32_t *rw_data, void *context) {
 static void ttyreq_callback(bool rw_select, uint32_t *rw_data, void *context) {
 	(void) context;
 	if(rw_select) state.dev_select = EXTRACT(*rw_data, 7, 0);
-	else *rw_data = state.req_bitmap;
+	else *rw_data = state.req_bitmap_sampled;
 }
 
 static void ttydata_callback(bool rw_select, uint32_t *rw_data, void *context) {

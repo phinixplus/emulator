@@ -22,8 +22,8 @@ static struct {
 	struct pollfd server_descr;
 
 	uint32_t dev_select;
-	uint32_t req_bitmap;
-	uint32_t req_bitmap_sampled;
+	uint32_t req_bitmap_save;
+	uint32_t req_bitmap_sample;
 
 	struct client_state {
 		struct pollfd descriptor;
@@ -189,35 +189,45 @@ static bool handle_client_write(struct client_state *client) {
 	return success;
 }
 
-static void process_events(void) {
-	pthread_mutex_lock(&state.mutex);
-
+static uint32_t process_events(void) {
+	uint32_t req_bitmap = 0;
 	int new_client = setup_client(&state.server_descr, state.clients);
-	if(new_client != -1) state.req_bitmap |= MASK(1, new_client);
+	if(new_client != -1) req_bitmap |= MASK(1, new_client);
 
 	for(int i = 0; i < TTY_MAX_CLIENTS; i++) {
 		struct client_state *client = &state.clients[i];
 		if(client->descriptor.fd == -1) continue;
 
 		assert(poll(&client->descriptor, 1, 0) >= 0);
-
 		bool still_open = true;
+
 		if(client->descriptor.revents & POLLIN)
 			still_open &= handle_client_read(client);
+		uint32_t used = io_fifo_space_used(client->cpubound_fifo);
+		if(used > client->cpubound_fifo_threshold)
+			req_bitmap |= MASK(1, i);
+
 		if((client->descriptor.revents & POLLOUT) && still_open)
 			still_open &= handle_client_write(client);
-		if(client->descriptor.revents & POLLHUP || !still_open)
-			close_client(client), state.req_bitmap |= MASK(1, i);
-	}
+		uint32_t free = io_fifo_space_free(client->ttybound_fifo);
+		if(free > client->ttybound_fifo_threshold)
+			req_bitmap |= MASK(1, i);
 
-	pthread_mutex_unlock(&state.mutex);
+		if(client->descriptor.revents & POLLHUP || !still_open)
+			close_client(client), req_bitmap |= MASK(1, i);
+	}
+	return req_bitmap;
 }
 
 static void *tty_thread(void *dummy) {
 	(void) dummy;
 	while(atomic_load(&state.is_init)) {
-		process_events();
-		if(state.req_bitmap != 0) ipm_interrupt(state.irq_cpu, 2);
+		pthread_mutex_lock(&state.mutex);
+		uint32_t req_bitmap = process_events();
+		state.req_bitmap_save = req_bitmap;
+		pthread_mutex_unlock(&state.mutex);
+
+		if(req_bitmap != 0) ipm_interrupt(state.irq_cpu, 2);
 		struct timespec duration = {0, 100 * 1000}; // 100us
 		nanosleep(&duration, NULL);
 	}
@@ -230,10 +240,9 @@ static void ttycon_callback(bool rw_select, uint32_t *rw_data, void *context) {
 
 	pthread_mutex_lock(&state.mutex);
 
+	state.req_bitmap_sample = state.req_bitmap_save;
 	for(int i = 0; i < TTY_MAX_CLIENTS; i++) {
 		if(state.clients[i].descriptor.fd == -1) continue;
-		if(io_fifo_space_used(state.clients[i].cpubound_fifo) != 0)
-			state.req_bitmap_sampled |= 1 << i;
 		*rw_data |= 1 << i;
 	}
 
@@ -243,7 +252,7 @@ static void ttycon_callback(bool rw_select, uint32_t *rw_data, void *context) {
 static void ttyreq_callback(bool rw_select, uint32_t *rw_data, void *context) {
 	(void) context;
 	if(rw_select) state.dev_select = EXTRACT(*rw_data, 7, 0);
-	else *rw_data = state.req_bitmap_sampled;
+	else *rw_data = state.req_bitmap_sample;
 }
 
 static void ttydata_callback(bool rw_select, uint32_t *rw_data, void *context) {

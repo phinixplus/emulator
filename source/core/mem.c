@@ -36,6 +36,8 @@ static bool read_byte(FILE *file, uint8_t *dst) {
 	return true;
 }
 
+// TODO: Rewrite mem_new() to fail safely when encountering file errors
+
 mem_t mem_new(const char *fname) {
 	// Make sure the datums union is packed correctly.
 	assert(sizeof(mem_datum_t) == sizeof(uint32_t));

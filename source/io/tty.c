@@ -318,7 +318,6 @@ bool tty_setup(
 	unsigned max_clients
 ) {
 	if(atomic_load(&state.is_init)) return false;
-	printf("%u clients\n", max_clients);
 
 	state.server_descr.events = POLLIN; // informs of waiting clients
 	for(unsigned i = 0; i < TTY_MAX_CLIENTS; i++) {

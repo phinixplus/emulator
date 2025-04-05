@@ -7,6 +7,7 @@
 #include "core/cpu.h"
 #include "core/io.h"
 
+#define TTY_DEFAULT_PORT 2323
 #define TTY_MAX_CLIENTS 32
 
 bool tty_setup(

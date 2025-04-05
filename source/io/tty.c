@@ -15,6 +15,7 @@
 
 static struct {
 	atomic_bool is_init;
+	atomic_uint max_clients;
 	cpu_t *irq_cpu;
 
 	pthread_mutex_t mutex;
@@ -52,18 +53,19 @@ static const uint8_t telnet_preamble[] = {
 	255, 251, 3  // IAC WILL SGA
 };
 
-static int setup_client(
+static unsigned setup_client(
 	struct pollfd *server_descr,
-	struct client_state client_pool[TTY_MAX_CLIENTS]
+	struct client_state *client_pool,
+	unsigned max_clients
 ) {
 	assert(poll(server_descr, 1, 0) >= 0);
-	if(!(server_descr->revents & POLLIN)) return -1;
+	if(!(server_descr->revents & POLLIN)) return max_clients;
 
 	int new_client = accept(server_descr->fd, NULL, NULL);
 	assert(new_client >= 0);
 
-	int i = 0;
-	for(; i < TTY_MAX_CLIENTS; i++) {
+	unsigned i = 0;
+	for(; i < max_clients; i++) {
 		if(client_pool[i].descriptor.fd != -1) continue;
 		ssize_t size = (ssize_t)(sizeof telnet_preamble);
 		if(send(new_client, telnet_preamble, size, 0) != size) break;
@@ -74,9 +76,8 @@ static int setup_client(
 		printf("Connected: TTY%u\n", client_pool[i].displayed_id);
 		break;
 	}
-	if(i == TTY_MAX_CLIENTS) i = -1;
 
-	if(i == -1) {
+	if(i == max_clients) {
 		assert(close(new_client) == 0);
 		printf("Connected: Refused!\n");
 	}
@@ -191,10 +192,11 @@ static bool handle_client_write(struct client_state *client) {
 
 static uint32_t process_events(void) {
 	uint32_t req_bitmap = 0;
-	int new_client = setup_client(&state.server_descr, state.clients);
-	if(new_client != -1) req_bitmap |= MASK(1, new_client);
+	unsigned max_clients = atomic_load(&state.max_clients);
+	unsigned new_client = setup_client(&state.server_descr, state.clients, max_clients);
+	if(new_client != max_clients) req_bitmap |= MASK(1, new_client);
 
-	for(int i = 0; i < TTY_MAX_CLIENTS; i++) {
+	for(unsigned i = 0; i < max_clients; i++) {
 		struct client_state *client = &state.clients[i];
 		if(client->descriptor.fd == -1) continue;
 
@@ -238,10 +240,11 @@ static void ttycon_callback(bool rw_select, uint32_t *rw_data, void *context) {
 	(void) context;
 	assert(!rw_select);
 
+	unsigned max_clients = atomic_load(&state.max_clients);
 	pthread_mutex_lock(&state.mutex);
 
 	state.req_bitmap_sample = state.req_bitmap_save;
-	for(int i = 0; i < TTY_MAX_CLIENTS; i++) {
+	for(unsigned i = 0; i < max_clients; i++) {
 		if(state.clients[i].descriptor.fd == -1) continue;
 		*rw_data |= 1 << i;
 	}
@@ -258,7 +261,7 @@ static void ttyreq_callback(bool rw_select, uint32_t *rw_data, void *context) {
 static void ttydata_callback(bool rw_select, uint32_t *rw_data, void *context) {
 	(void) context;
 	unsigned tty_select = EXTRACT(state.dev_select, 5, 0);
-	if(tty_select >= TTY_MAX_CLIENTS) return;
+	if(tty_select >= atomic_load(&state.max_clients)) return;
 	struct client_state *client = &state.clients[tty_select];
 
 	pthread_mutex_lock(&state.mutex);
@@ -278,7 +281,7 @@ static void ttystat_callback(bool rw_select, uint32_t *rw_data, void *context) {
 	(void) context;
 	unsigned tty_select = EXTRACT(state.dev_select, 5, 0);
 	unsigned csr_select = EXTRACT(state.dev_select, 2, 5);
-	if(tty_select >= TTY_MAX_CLIENTS) return;
+	if(tty_select >= atomic_load(&state.max_clients)) return;
 	struct client_state *client = &state.clients[tty_select];
 
 	pthread_mutex_lock(&state.mutex);
@@ -309,8 +312,13 @@ static void ttystat_callback(bool rw_select, uint32_t *rw_data, void *context) {
 	pthread_mutex_unlock(&state.mutex);
 }
 
-bool tty_setup(io_t io, cpu_t *irq_cpu, uint16_t server_port) {
+bool tty_setup(
+	io_t io, cpu_t *irq_cpu,
+	uint16_t server_port,
+	unsigned max_clients
+) {
 	if(atomic_load(&state.is_init)) return false;
+	printf("%u clients\n", max_clients);
 
 	state.server_descr.events = POLLIN; // informs of waiting clients
 	for(unsigned i = 0; i < TTY_MAX_CLIENTS; i++) {
@@ -342,9 +350,10 @@ bool tty_setup(io_t io, cpu_t *irq_cpu, uint16_t server_port) {
 	assert(io_try_attach(io, IO_TTYSTAT, ttystat_callback, NULL));
 
 	pthread_mutex_init(&state.mutex, NULL);
+	atomic_store(&state.is_init, true);
+	atomic_store(&state.max_clients, max_clients);
 	pthread_create(&state.server_thread, NULL, tty_thread, NULL);
 
-	atomic_store(&state.is_init, true);
 	return true;
 }
 
@@ -356,7 +365,8 @@ bool tty_close(io_t io) {
 	pthread_mutex_destroy(&state.mutex);
 
 	assert(close(state.server_descr.fd) == 0);
-	for(int i = 0; i < TTY_MAX_CLIENTS; i++) {
+	unsigned max_clients = atomic_load(&state.max_clients);
+	for(unsigned i = 0; i < max_clients; i++) {
 		if(state.clients[i].descriptor.fd == -1) continue;
 		close_client(&state.clients[i]);
 	}

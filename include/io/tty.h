@@ -9,7 +9,11 @@
 
 #define TTY_MAX_CLIENTS 32
 
-bool tty_setup(io_t io, cpu_t *irq_cpu, uint16_t server_port);
+bool tty_setup(
+	io_t io, cpu_t *irq_cpu,
+	uint16_t server_port,
+	unsigned max_clients
+);
 bool tty_close(io_t io);
 
 #endif // PPLUSEMU_IO_TTY_H

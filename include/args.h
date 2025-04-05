@@ -5,6 +5,7 @@
 
 typedef struct options {
 	const char *file;
+	unsigned ttys;
 	bool verbose;
 	bool show_freq;
 } options_t;

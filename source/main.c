@@ -88,7 +88,7 @@ int main(int argc, char **argv) {
 	pthread_sigmask(SIG_BLOCK, &signal_mask, NULL);
 	{ // <- Spawn threads inside this block
 		assert(dbgcon_setup(io));
-		assert(tty_setup(io, &cpu, TTY_SERVER_PORT));
+		assert(tty_setup(io, &cpu, TTY_SERVER_PORT, options.ttys));
 		if(options.show_freq) pthread_create(
 			&cleanup_registry.freq, NULL,
 			freq_counter_thread, &cpu.step_count

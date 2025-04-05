@@ -27,9 +27,14 @@ void args_print_help(char *exe_name, bool verbose) {
 }
 
 options_t args_parse(int argc, char **argv) {
-	options_t options = {0};
-	for(int ret; (ret = getopt(argc, argv, "+vfh")) != -1; ) {
+	options_t options = {0}; options.ttys = 32;
+	for(int ret; (ret = getopt(argc, argv, "+:t:vfh")) != -1; ) {
 		switch(ret) {
+			case 't':
+				ret = sscanf(optarg, "%u", &options.ttys);
+				if(ret == 0 || options.ttys < 1 || options.ttys > 32)
+					args_print_help(argv[0], true);
+				break;
 			case 'v': options.verbose = true; break;
 			case 'f': options.show_freq = true; break;
 			case 'h': args_print_help(argv[0], true); break;

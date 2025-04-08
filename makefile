@@ -32,7 +32,7 @@ C_SOURCES	= $(shell find $(C_SOURCE_DIR) -type f -name "*.c")
 C_OBJECTS	= $(C_SOURCES:$(C_SOURCE_DIR)%.c=$(C_BUILD_DIR)%.o)
 C_LIBRARIES	= $(addprefix -l, $(LIBS_EXISTING))
 
-ASM_SOURCES	= $(shell find $(ASM_SOURCE_DIR) -maxdepth 1 -type f -name "*.asm")
+ASM_SOURCES	= $(shell find $(ASM_SOURCE_DIR) -type f -name "*.asm")
 ASM_OBJECTS	= $(ASM_SOURCES:$(ASM_SOURCE_DIR)%.asm=$(ASM_BUILD_DIR)%.hex)
 
 ### User Rules ###
@@ -65,7 +65,7 @@ $(PROGRAM_NAME): $(C_OBJECTS)
 
 ### Assembly Build Rule ###
 $(ASM_OBJECTS): $(ASM_BUILD_DIR)%.hex: $(ASM_SOURCE_DIR)%.asm
-	@mkdir -p $(ASM_BUILD_DIR)
+	@dirname $@ | xargs mkdir -p
 	@$(ASSEMBLER) $(ASM_FLAGS) $^ -o $@
 	@echo -e '$(shell echo $(ASSEMBLER) | tr [:lower:] [:upper:])\t$@'
 

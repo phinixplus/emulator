@@ -33,7 +33,9 @@ void args_print_help(char *exe_name, bool verbose) {
 }
 
 options_t args_parse(int argc, char **argv) {
-	options_t options = {0}; options.ttys = TTY_MAX_CLIENTS;
+	options_t options = {0};
+	options.ttys = TTY_MAX_CLIENTS;
+	options.port = TTY_DEFAULT_PORT;
 	for(int ret; (ret = getopt(argc, argv, "+:t:p:vfh")) != -1; ) {
 		switch(ret) {
 			case 't':

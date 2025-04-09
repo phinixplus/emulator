@@ -1,0 +1,53 @@
+name: Release Project
+on:
+  push:
+    tags:
+    - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Install MUSL
+      run: sudo apt install -y musl-dev musl-tools
+
+    - name: Install CustomASM
+      uses: actions-rs/cargo@v1
+      with:
+        command: install
+        args: customasm
+
+    - name: Checkout Project
+      uses: actions/checkout@v4
+
+    - name: Compile Executable
+      run: make C_COMPILER=musl-gcc C_FLAGS_LNK=-static release
+
+    - name: Assemble Example Programs
+      run: make assemble
+
+    - name: Package Release Artifacts
+      run: |
+        mkdir package/
+        cp CHANGELOG.md LICENSE.txt package/
+        mv build/pplusemu package/
+        mv build/asm/ package/
+        cd package/
+        find . | xargs zip pplusemu_${{github.ref_name}}.zip
+
+    - name: Sanity Check
+      run: |
+        find build/
+        find package/
+
+    - name: Create Release
+      uses: softprops/action-gh-release@v2
+      with:
+        name: PHINIX+ Emulator ${{github.ref_name}}
+        body_path: CHANGELOG.md
+        fail_on_unmatched_files: true
+        files: |
+          package/pplusemu_${{github.ref_name}}.zip

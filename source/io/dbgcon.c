@@ -21,7 +21,7 @@ static void *dbgcon_thread(void *dummy) {
 	for(uint32_t data = 0; ; ) {
 		bool success = io_fifo_read(state.fifo, &data);
 		if(success) printf("%d\n", data);
-		else if(!state.is_init) break;
+		else if(!atomic_load(&state.is_init)) break;
 		nanosleep(&duration, NULL);
 	}
 	pthread_exit(NULL);
@@ -34,19 +34,19 @@ void dbgcon_callback(bool rw_select, uint32_t *rw_data, void *context) {
 }
 
 bool dbgcon_setup(io_t io) {
-	if(state.is_init) return false;
+	if(atomic_load(&state.is_init)) return false;
 
 	state.fifo = io_fifo_new();
 	assert(io_try_attach(io, IO_DBGCON, dbgcon_callback, NULL));
 	pthread_create(&state.thread, NULL, dbgcon_thread, NULL);
 
-	state.is_init = true;
+	atomic_store(&state.is_init, true);
 	return true;
 }
 
 bool dbgcon_close(io_t io) {
-	if(!state.is_init) return false;
-	state.is_init = false;
+	if(!atomic_load(&state.is_init)) return false;
+	atomic_store(&state.is_init, false);
 
 	pthread_join(state.thread, NULL);
 	io_fifo_del(state.fifo);

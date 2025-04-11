@@ -32,8 +32,8 @@ program:
 	lw  t1 t3
 	add t3 4
 	.loop:
-		lbu  at t3
-		out  at ttydata
+		lbu at t3
+		out at ttydata
 		add t3 1
 		sub t1 1
 		tst zer c1 t1

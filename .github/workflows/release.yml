@@ -8,17 +8,45 @@ permissions:
   contents: write
 
 jobs:
-  release:
+  compile-customasm:
+    name: Compile CustomASM Binary
     runs-on: ubuntu-latest
     steps:
     - name: Install MUSL
       run: sudo apt install -y musl-dev musl-tools
 
-    - name: Install CustomASM
+    - name: Setup Rust Toolchain
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+        target: x86_64-unknown-linux-musl
+        override: true
+
+    - name: Download CustomASM
+      uses: actions/checkout@v4
+      with:
+        repository: hlorenzi/customasm
+        ref: v0.13.9
+
+    - name: Compile CustomASM
       uses: actions-rs/cargo@v1
       with:
-        command: install
-        args: customasm
+        command: build
+        args: --release --target x86_64-unknown-linux-musl
+
+    - name: Store Compiled Binary
+      uses: actions/upload-artifact@v4
+      with:
+        name: customasm-bin
+        path: target/x86_64-unknown-linux-musl/release/customasm
+        if-no-files-found: error
+
+  compile-pplusemu:
+    name: Compile PPlusEmu Binary
+    runs-on: ubuntu-latest
+    steps:
+    - name: Install MUSL
+      run: sudo apt install -y musl-dev musl-tools
 
     - name: Checkout Project
       uses: actions/checkout@v4
@@ -26,28 +54,140 @@ jobs:
     - name: Compile Executable
       run: make C_COMPILER=musl-gcc C_FLAGS_LNK=-static release
 
-    - name: Assemble Example Programs
-      run: make assemble
-
-    - name: Package Release Artifacts
-      run: |
-        mkdir package/
-        cp CHANGELOG.md LICENSE.txt package/
-        mv build/pplusemu package/
-        mv build/asm/ package/
-        cd package/
-        find . | xargs zip pplusemu_${{github.ref_name}}.zip
-
-    - name: Sanity Check
-      run: |
-        find build/
-        find package/
-
-    - name: Create Release
-      uses: softprops/action-gh-release@v2
+    - name: Store Compiled Binary
+      uses: actions/upload-artifact@v4
       with:
-        name: PHINIX+ Emulator ${{github.ref_name}}
-        body_path: CHANGELOG.md
-        fail_on_unmatched_files: true
-        files: |
-          package/pplusemu_${{github.ref_name}}.zip
+        name: pplusemu-bin
+        path: build/pplusemu
+        if-no-files-found: error
+
+  package-trial:
+    name: Create Trial Package
+    runs-on: ubuntu-latest
+    needs: [ compile-customasm, compile-pplusemu ]
+    steps:
+      - name: Checkout Project
+        uses: actions/checkout@v4
+      - run: mkdir -p package/
+
+      - name: Get PPlusEmu Binary
+        uses: actions/download-artifact@v4
+        with:
+          name: pplusemu-bin
+          path: package/
+      - run: chmod +x package/pplusemu
+
+      - name: Get CustomASM Binary
+        uses: actions/download-artifact@v4
+        with:
+          name: customasm-bin
+      - run: chmod +x customasm
+
+      - name: Assemble Examples
+        run: make ASSEMBLER=./customasm assemble
+
+      - name: Package Release Artifacts
+        run: |
+          cp CHANGELOG.md LICENSE.txt package/
+          cp -r build/asm/ package/
+          cd package/
+          find . | xargs zip trial.zip
+
+      - name: Store Release Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: trial-zip
+          path: package/trial.zip
+          if-no-files-found: error
+
+  package-develop:
+    name: Create Develop Package
+    runs-on: ubuntu-latest
+    needs: [ compile-customasm, compile-pplusemu ]
+    steps:
+      - name: Checkout Project
+        uses: actions/checkout@v4
+      - run: mkdir -p package/dev/
+
+      - name: Get PPlusEmu Binary
+        uses: actions/download-artifact@v4
+        with:
+          name: pplusemu-bin
+          path: package/
+      - run: chmod +x package/pplusemu
+
+      - name: Get CustomASM Binary
+        uses: actions/download-artifact@v4
+        with:
+          name: customasm-bin
+          path: package/dev/
+      - run: chmod +x package/dev/customasm
+
+      - name: Fetch CustomASM License
+        uses: actions/checkout@v4
+        with:
+          repository: hlorenzi/customasm
+          ref: v0.13.9
+          path: tmp/
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            LICENSE.txt
+      - run: mv tmp/LICENSE.txt package/dev/
+
+      - name: Package Release Artifacts
+        run: |
+          cp CHANGELOG.md LICENSE.txt package/
+          cp -r archdef/ package/dev/
+          cp -r test/ package/asm/
+          cp .github/artifacts/* package/dev/
+          cd package/
+          find . | xargs zip develop.zip
+
+      - name: Store Release Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: develop-zip
+          path: package/develop.zip
+          if-no-files-found: error
+
+  create-release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    needs: [ package-trial, package-develop ]
+    steps:
+      - name: Get Trial Release Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: trial-zip
+
+      - name: Get Develop Release Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: develop-zip
+
+      - name: Rename Release Artifacts
+        run: |
+          mv trial.zip pplusemu_${{github.ref_name}}_trial.zip
+          mv develop.zip pplusemu_${{github.ref_name}}_develop.zip
+
+      - name: Fetch Changelog
+        uses: actions/checkout@v4
+        with:
+          path: tmp/
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            CHANGELOG.md
+      - run: mv tmp/CHANGELOG.md .
+
+      - name: Sanity Check
+        run: find .
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: PHINIX+ Emulator ${{github.ref_name}}
+          body_path: CHANGELOG.md
+          fail_on_unmatched_files: true
+          files: |
+            pplusemu_${{github.ref_name}}_trial.zip
+            pplusemu_${{github.ref_name}}_develop.zip

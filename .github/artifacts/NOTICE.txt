@@ -1,0 +1,8 @@
+The program `customasm` that you received along with the rest of
+this release is a version of the CustomASM utility, pre-compiled
+using musl, licensed under Apache-2.0 and with sources available at
+https://github.com/hlorenzi/customasm.
+
+Read the accompanying `LICENSE.txt` for CustomASM's full license document.
+No modifications to the program have been made prior to compilation.
+The program is hereby included solely for the end user's convenience.

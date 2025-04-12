@@ -1,13 +1,17 @@
 #ifndef PPLUSEMU_CORE_IO_H
 #define PPLUSEMU_CORE_IO_H
 
-#include <stdint.h>
 #include <stdbool.h>
+#include <stdint.h>
 
-#define IO_ADDR_BITS 8
-#define IO_FIFO_SIZE_BITS 8
+// Utilities for Bitfields //
+
+#define MASK(WIDTH, OFFSET) (((1 << (WIDTH)) - 1) << (OFFSET))
+#define EXTRACT(SRC, WIDTH, OFFSET) (((SRC) & MASK(WIDTH, OFFSET)) >> (OFFSET))
 
 // IO Registry Section //
+
+#define IO_ADDR_BITS 8
 
 typedef void (*io_callback_t)(
 	bool rw_select,
@@ -38,6 +42,9 @@ void io_write(io_t io, uint16_t port, uint32_t value);
 
 // IO FIFO Section //
 
+#define IO_FIFO_SIZE_BITS 8
+#define IO_FIFO_SIZE (1 << IO_FIFO_SIZE_BITS)
+
 typedef struct io_fifo_object *io_fifo_t;
 
 io_fifo_t io_fifo_new(void);
@@ -45,6 +52,7 @@ void io_fifo_del(io_fifo_t fifo);
 
 bool io_fifo_read(io_fifo_t fifo, uint32_t *data);
 bool io_fifo_write(io_fifo_t fifo, uint32_t *data);
-uint32_t io_fifo_space(io_fifo_t fifo);
+uint32_t io_fifo_space_used(io_fifo_t fifo);
+uint32_t io_fifo_space_free(io_fifo_t fifo);
 
 #endif // PPLUSEMU_CORE_IO_H

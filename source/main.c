@@ -1,11 +1,13 @@
 #include "main.h"
 
 #include <assert.h>
-#include <pthread.h>
 #include <signal.h>
+#include <stdatomic.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#include <pthread.h>
 #include <unistd.h>
 
 #include "args.h"
@@ -13,7 +15,7 @@
 #include "core/mem.h"
 #include "core/io.h"
 #include "io/dbgcon.h"
-#include "io/telnet.h"
+#include "io/tty.h"
 
 static options_t options;
 static struct {
@@ -23,11 +25,11 @@ static struct {
 	io_t io;
 } cleanup_registry;
 
-static bool running = true;
+static atomic_bool running = true;
 bool is_running(void) { return running; }
 void stop_running(void) { running = false; }
 
-void exit_as_sighandler(int sigid) { 
+void exit_as_sighandler(int sigid) {
 	fprintf(stderr, "Caught signal: %s\n", strsignal(sigid));
 	exit(EXIT_FAILURE);
 }
@@ -50,7 +52,7 @@ static void cleanup(void) {
 	if(options.show_freq) pthread_join(cleanup_registry.freq, NULL);
 
 	assert(dbgcon_close(cleanup_registry.io));
-	telnet_close(cleanup_registry.io);
+	assert(tty_close(cleanup_registry.io));
 
 	cpu_del(cleanup_registry.cpu);
 	mem_del(cleanup_registry.mem);
@@ -84,7 +86,7 @@ int main(int argc, char **argv) {
 	pthread_sigmask(SIG_BLOCK, &signal_mask, NULL);
 	{ // <- Spawn threads inside this block
 		assert(dbgcon_setup(io));
-		assert(telnet_setup(io, 2323)); // Soon to be a thread too
+		assert(tty_setup(io, &cpu, options.port, options.ttys));
 		if(options.show_freq) pthread_create(
 			&cleanup_registry.freq, NULL,
 			freq_counter_thread, &cpu.step_count

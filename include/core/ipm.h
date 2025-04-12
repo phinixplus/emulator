@@ -1,15 +1,17 @@
 #ifndef PPLUSEMU_CORE_IPM_H
 #define PPLUSEMU_CORE_IPM_H
 
-#include <pthread.h>
+#include <stdatomic.h>
 #include <stdbool.h>
 #include <stdint.h>
+
+#include <pthread.h>
 
 #include "io.h"
 
 typedef struct cpu cpu_t;
 typedef struct ipm {
-	bool is_init;
+	atomic_bool is_init;
 	bool is_privileged;
 	uint32_t irq_bitmap;
 } ipm_t;

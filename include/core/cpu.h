@@ -4,9 +4,9 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#include "mem.h"
 #include "io.h"
 #include "ipm.h"
+#include "mem.h"
 
 typedef struct cpu {
 	// Bookkeeping

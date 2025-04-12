@@ -1,11 +1,11 @@
 #include "cpu.h"
 
-#include "main.h"
-#include "util.h"
-
 #include <assert.h>
 #include <stdbool.h>
 #include <stdio.h>
+
+#include "main.h"
+#include "util.h"
 
 #pragma pack(push, 1)
 typedef union instruction {
@@ -75,7 +75,7 @@ void cpu_new(cpu_t *cpu, mem_t mem, io_t io, bool with_ipm) {
 		cpu->data[i] = cpu->addr[i] = 0;
 
 	cpu->mem = mem, cpu->io = io;
-	cpu->ipm.is_init = false;
+	atomic_store(&cpu->ipm.is_init, false);
 	if(with_ipm) ipm_new(cpu);
 }
 
@@ -92,6 +92,7 @@ void cpu_execute(cpu_t *cpu) {
 		cpu->jp = cpu->ip, cpu->ip = cpu->start_addr;
 		ipm_set_privilege(cpu, true);
 	}
+	pthread_mutex_unlock(&cpu->mutex);
 
 	again:; // PAD jumps here to fetch again without counting a cycle
 	uint32_t inst_word = mem_fetch_word(cpu->mem, cpu->ip);
@@ -104,11 +105,17 @@ void cpu_execute(cpu_t *cpu) {
 		case 0x00: switch(instr.hg.funct) {
 			case 0x0: // BRK
 				if(!ipm_check_privilege(cpu, false)) ipm_interrupt(cpu, 1);
-				else pthread_cond_wait(&cpu->signal, &cpu->mutex);
+				else {
+					pthread_mutex_lock(&cpu->mutex);
+					while(!ipm_interrupted(cpu))
+						pthread_cond_wait(&cpu->signal, &cpu->mutex);
+					pthread_mutex_unlock(&cpu->mutex);
+				}
+				cpu->ip += 2;
 				break;
 			case 0x1: // RSM
-				cpu->ip = cpu->jp;
 				ipm_set_privilege(cpu, false);
+				cpu->ip = cpu->jp;
 				break;
 			case 0x2: // LJP
 				cpu->jp = cpu->data[instr.hg.tgt_g];
@@ -596,7 +603,6 @@ void cpu_execute(cpu_t *cpu) {
 	cpu->cond &= 0xFE;
 	cpu->data[0] = 0;
 	cpu->step_count++;
-	pthread_mutex_unlock(&cpu->mutex);
 }
 
 void cpu_print_state(cpu_t *cpu) {
@@ -609,12 +615,12 @@ void cpu_print_state(cpu_t *cpu) {
 	for(int i = 0; i < 16; i++) {
 		hex_string_of_length(value, cpu->data[i], 8);
 		fprintf(stderr, "%s(x%x): %8s ", datareg_conv[i], i, value);
-		putchar((i & 3) == 3 ? '\n' : ' ');
+		fputc((i & 3) == 3 ? '\n' : ' ', stderr);
 	}
 	for(int i = 0; i < 16; i++) {
 		hex_string_of_length(value, cpu->addr[i], 8);
 		fprintf(stderr, "%s(y%x): %8s ", addrreg_conv[i], i, value);
-		putchar((i & 3) == 3 ? '\n' : ' ');
+		fputc((i & 3) == 3 ? '\n' : ' ', stderr);
 	}
 	fprintf(stderr, "-----------------\n");
 }

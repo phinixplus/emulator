@@ -9,7 +9,7 @@
 
 void args_print_help(char *exe_name, bool verbose) {
 	if(!verbose) fprintf(stderr,
-	"Usage: %s [-vfh] [-p port] [-t 1-%u] <memfile>\n"
+	"Usage: %s [-fh] [-p port] [-t 1-%u] <memfile>\n"
 	"Run with -h for more info. \n",
 	exe_name, TTY_MAX_CLIENTS);
 	else fprintf(stderr,
@@ -17,7 +17,6 @@ void args_print_help(char *exe_name, bool verbose) {
 	"-----------------------\n"
 	"Usage: %s <options> <memfile>\n"
 	"Options:\n"
-	"	-v: Verbose; Output CPU state for each instruction.\n"
 	"	-f: Show Frequency; Output execution speed each second.\n"
 	"	-h: Extra Help; Prints this message.\n"
 	"	-p: TTY Server Port; The TCP port on which to listen.\n"
@@ -52,7 +51,6 @@ options_t args_parse(int argc, char **argv) {
 					args_print_help(argv[0], false);
 				}
 				break;
-			case 'v': options.verbose = true; break;
 			case 'f': options.show_freq = true; break;
 			case 'h': args_print_help(argv[0], true); break;
 			default:  args_print_help(argv[0], false); break;

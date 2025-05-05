@@ -27,13 +27,9 @@ typedef struct cpu {
 	ipm_t ipm;
 } cpu_t;
 
-extern const char datareg_conv[][3];
-extern const char addrreg_conv[][3];
-
-void cpu_new(cpu_t *cpu, mem_t memory, io_t io, bool with_ipm);
+void cpu_new(cpu_t *cpu, mem_t memory, io_t io);
 void cpu_del(cpu_t *cpu);
 
 void cpu_execute(cpu_t *cpu);
-void cpu_print_state(cpu_t *cpu);
 
 #endif // PPLUSEMU_CORE_CPU_H

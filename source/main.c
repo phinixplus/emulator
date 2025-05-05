@@ -26,8 +26,8 @@ static struct {
 } cleanup_registry;
 
 static atomic_bool running = true;
-bool is_running(void) { return running; }
-void stop_running(void) { running = false; }
+bool is_running(void) { return atomic_load(&running); }
+void stop_running(void) { atomic_store(&running, false); }
 
 void exit_as_sighandler(int sigid) {
 	fprintf(stderr, "Caught signal: %s\n", strsignal(sigid));
@@ -54,6 +54,7 @@ static void cleanup(void) {
 	assert(dbgcon_close(cleanup_registry.io));
 	assert(tty_close(cleanup_registry.io));
 
+	ipm_del(cleanup_registry.cpu);
 	cpu_del(cleanup_registry.cpu);
 	mem_del(cleanup_registry.mem);
 	io_del(cleanup_registry.io);
@@ -72,7 +73,7 @@ int main(int argc, char **argv) {
 	sigaction(SIGINT, &sig_int, NULL);
 
 	// Setup and register for cleanup
-	cpu_t cpu;
+	cpu_t cpu = {0};
 	cleanup_registry.cpu = &cpu;
 	mem_t mem = mem_new(options.file);
 	cleanup_registry.mem = mem;
@@ -96,12 +97,8 @@ int main(int argc, char **argv) {
 	pthread_sigmask(SIG_UNBLOCK, &signal_mask, NULL);
 
 	// After cpu handle has been distributed, init and sendoff
-	cpu_new(&cpu, mem, io, true);
-	while(is_running()) {
-		cpu_execute(&cpu);
-		if(options.verbose)
-			cpu_print_state(&cpu);
-	}
+	cpu_new(&cpu, mem, io), ipm_new(&cpu);
+	while(is_running()) cpu_execute(&cpu);
 
 	fprintf(stderr,
 		"CPU halted after %lu step(s).\n",

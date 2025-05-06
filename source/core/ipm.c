@@ -52,7 +52,7 @@ void ipm_set_privilege(cpu_t *cpu, bool is_privileged) {
 bool ipm_check_privilege(cpu_t *cpu, bool irq_if_fail) {
 	if(!atomic_load(&cpu->ipm.is_init)) return false;
 	if(cpu->ipm.is_privileged) return true;
-	if(irq_if_fail) ipm_interrupt(cpu, 0);
+	if(irq_if_fail) ipm_interrupt(cpu, IRQ_SYSERR);
 	return false;
 }
 

@@ -229,7 +229,7 @@ static void *tty_thread(void *dummy) {
 		state.req_bitmap_save = req_bitmap;
 		pthread_mutex_unlock(&state.mutex);
 
-		if(req_bitmap != 0) ipm_interrupt(state.irq_cpu, 2);
+		if(req_bitmap != 0) ipm_interrupt(state.irq_cpu, IRQ_IO_TTY);
 		struct timespec duration = {0, 100 * 1000}; // 100us
 		nanosleep(&duration, NULL);
 	}

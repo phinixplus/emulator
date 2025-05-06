@@ -4,7 +4,7 @@ li t0 46
 li t1 1
 li t2 0
 
-; Print out sucessive
+; Print out successive
 ; fibonacci numbers
 loop:
 	mov at t2

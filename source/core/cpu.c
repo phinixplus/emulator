@@ -5,7 +5,6 @@
 #include <stdio.h>
 
 #include "main.h"
-#include "util.h"
 
 #pragma pack(push, 1)
 typedef union instruction {

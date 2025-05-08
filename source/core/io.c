@@ -5,8 +5,6 @@
 
 #include <pthread.h>
 
-#include "util.h"
-
 // IO Registry Section //
 
 typedef struct io_registry {
@@ -83,9 +81,8 @@ uint32_t io_read(io_t io, uint16_t port) {
 	io_callback_t callback = io->read_callbacks[port];
 	void *context = io->read_contexts[port];
 	if(callback == NULL) {
-		char hexbuf[9] = {0};
-		hex_string_of_length(hexbuf, port, (IO_ADDR_BITS - 1) / 4 + 1);
-		fprintf(stderr, "Attempt to read from unassigned port %sh\n", hexbuf);
+		int hexits = (IO_ADDR_BITS - 1) / 4 + 1;
+		fprintf(stderr, "Read from unassigned port %0*xh\n", port, hexits);
 		return 0;
 	}
 
@@ -99,10 +96,9 @@ void io_write(io_t io, uint16_t port, uint32_t value) {
 
 	io_callback_t callback = io->write_callbacks[port];
 	void *context = io->write_contexts[port];
-	if(callback == NULL) {
-		char hexbuf[9] = {0};
-		hex_string_of_length(hexbuf, port, (IO_ADDR_BITS - 1) / 4 + 1);
-		fprintf(stderr, "Attempt to write to unassigned port %sh\n", hexbuf);
+	if(callback != NULL) {
+		int hexits = (IO_ADDR_BITS - 1) / 4 + 1;
+		fprintf(stderr, "Write to unassigned port %0*xh\n", port, hexits);
 		return;
 	}
 

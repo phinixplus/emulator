@@ -12,16 +12,7 @@
 		{
 			"type": "cppdbg",
 			"request": "launch",
-			"name": "Launch (Verbose)",
-			"preLaunchTask": "Launch",
-			"program": "${workspaceRoot}/build/pplusemu",
-			"cwd": "${workspaceRoot}/build/",
-			"args": [ "-v", "${input:pick_asm_file}" ]
-		},
-		{
-			"type": "cppdbg",
-			"request": "launch",
-			"name": "Launch (Silent)",
+			"name": "Launch",
 			"preLaunchTask": "Launch",
 			"program": "${workspaceRoot}/build/pplusemu",
 			"cwd": "${workspaceRoot}/build/",

@@ -1,4 +1,4 @@
-#subruledef datareg {
+#subruledef data {
 	x0 => 0x0`4
 	x1 => 0x1`4
 	x2 => 0x2`4
@@ -17,7 +17,7 @@
 	xF => 0xF`4
 }
 
-#subruledef addrreg {
+#subruledef addr {
 	y0 => 0x0`4
 	y1 => 0x1`4
 	y2 => 0x2`4
@@ -36,7 +36,7 @@
 	yF => 0xF`4
 }
 
-#subruledef condreg {
+#subruledef cond {
 	c0 => 0x0`3
 	c1 => 0x1`3
 	c2 => 0x2`3
@@ -49,4 +49,11 @@
 
 ; ---------------------------------------------------------------------------- ;
 
+#fn w_gg_ih(tgt_g, src_g, imm16) => src_g`4 @ tgt_g`4 @ imm16`16
 
+; ---------------------------------------------------------------------------- ;
+
+#ruledef native_w_cc3g {
+	inp {dg: data} [ {sg: data} {ih: u16} ] => 0x20`8 @ w_gg_ih({dg}, {sg}, {ih})
+	out {dg: data} [ {sg: data} {ih: u16} ] => 0x21`8 @ w_gg_ih({dg}, {sg}, {ih})
+}

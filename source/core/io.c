@@ -82,7 +82,7 @@ uint32_t io_read(io_t io, uint16_t port) {
 	void *context = io->read_contexts[port];
 	if(callback == NULL) {
 		int hexits = (IO_ADDR_BITS - 1) / 4 + 1;
-		fprintf(stderr, "Read from unassigned port %0*xh\n", port, hexits);
+		fprintf(stderr, "Read from unassigned port %0*xh\n", hexits, port);
 		return 0;
 	}
 
@@ -96,9 +96,9 @@ void io_write(io_t io, uint16_t port, uint32_t value) {
 
 	io_callback_t callback = io->write_callbacks[port];
 	void *context = io->write_contexts[port];
-	if(callback != NULL) {
+	if(callback == NULL) {
 		int hexits = (IO_ADDR_BITS - 1) / 4 + 1;
-		fprintf(stderr, "Write to unassigned port %0*xh\n", port, hexits);
+		fprintf(stderr, "Write to unassigned port %0*xh\n", hexits, port);
 		return;
 	}
 

@@ -19,7 +19,8 @@ typedef union instruction {
 			struct {
 				unsigned char tgt_g : 4;
 				unsigned char src_g : 4;
-				unsigned short imm16: 16;
+				unsigned char imm16_hi: 8;
+				unsigned char imm16_lo: 8;
 			} w_gg_ih;
 			struct {
 				unsigned char tgt_g: 4;
@@ -35,6 +36,12 @@ typedef union instruction {
 	};
 } instruction_t;
 #pragma pack(pop)
+
+static inline uint16_t get_imm_w_gg_ih(instruction_t *instr) {
+	uint16_t imm = instr->w_gg_ih.imm16_lo;
+	imm |= instr->w_gg_ih.imm16_hi << 8;
+	return imm;
+}
 
 void cpu_new(cpu_t *cpu, mem_t mem, io_t io) {
 	// Make sure the instruction formats union is packed correctly.
@@ -70,7 +77,25 @@ void cpu_execute(cpu_t *cpu) {
 	instruction_t instr = {inst_word};
 
 	switch(instr.opcode) {
-		default:;
+		uint32_t tmp_g1, tmp_g2;
+		case 0x20: // INP
+			tmp_g1 = cpu->data[instr.w_gg_ih.src_g];
+			tmp_g1 += get_imm_w_gg_ih(&instr);
+			tmp_g2 = io_read(cpu->io, tmp_g1 & 0xFFFF);
+			cpu->data[instr.w_gg_ih.tgt_g] = tmp_g2;
+			break;
+		case 0x21: // OUT
+			tmp_g1 = cpu->data[instr.w_gg_ih.src_g];
+			tmp_g1 += get_imm_w_gg_ih(&instr);
+			tmp_g2 = cpu->data[instr.w_gg_ih.tgt_g];
+			io_write(cpu->io, tmp_g1 & 0xFFFF, tmp_g2);
+			break;
+		default:
+			stop_running();
+			fprintf(stderr,
+				"Execution of undefined opcode: %02xh at %08xh\n",
+				instr.opcode, cpu->ip
+			);
 	}
 
 	cpu->cond &= 0xFE;

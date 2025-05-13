@@ -49,11 +49,21 @@
 
 ; ---------------------------------------------------------------------------- ;
 
+#subruledef ncond {
+	  {base: cond}  => 0`1 @ {base}
+	 !{base: cond}  => 1`1 @ {base}
+	!!{base: ncond} => {base}
+}
+
+#fn w_cc3g(funct, tgt_g, src1_g, src2_g, nt, tgt_c, ns, src_c) =>
+	src1_g`4 @ tgt_g`4 @ src2_g`4 @ funct`4 @ ns`1 @ src_c`3 @ nt`1 @ tgt_c`3
+#fn w_g_il(tgt_g, imm20) => imm20[2:16] @ tgt_g`4 @ imm20[15:0]
 #fn w_gg_ih(tgt_g, src_g, imm16) => src_g`4 @ tgt_g`4 @ imm16`16
 
 ; ---------------------------------------------------------------------------- ;
 
-#ruledef native_w_cc3g {
+#ruledef native_w_gg_ih {
 	inp {dg: data} [ {sg: data} {ih: u16} ] => 0x20`8 @ w_gg_ih({dg}, {sg}, {ih})
 	out {dg: data} [ {sg: data} {ih: u16} ] => 0x21`8 @ w_gg_ih({dg}, {sg}, {ih})
 }
+

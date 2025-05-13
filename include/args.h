@@ -8,7 +8,6 @@ typedef struct options {
 	const char *file;
 	unsigned ttys;
 	uint16_t port;
-	bool verbose;
 	bool show_freq;
 } options_t;
 

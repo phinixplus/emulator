@@ -6,6 +6,7 @@
 
 #include "main.h"
 
+typedef unsigned char bits_t;
 #pragma pack(push, 1)
 typedef union instruction {
 	uint32_t instr_word;
@@ -13,29 +14,38 @@ typedef union instruction {
 		uint8_t opcode;
 		union {
 			struct {
-				unsigned char tgt_g : 4;
-				unsigned int imm20: 20;
+				bits_t tgt_g: 4;
+				bits_t imm20_hi: 4;
+				bits_t imm20_md: 8;
+				bits_t imm20_lo: 8;
 			} w_g_il;
 			struct {
-				unsigned char tgt_g : 4;
-				unsigned char src_g : 4;
-				unsigned char imm16_hi: 8;
-				unsigned char imm16_lo: 8;
+				bits_t tgt_g: 4;
+				bits_t src_g: 4;
+				bits_t imm16_hi: 8;
+				bits_t imm16_lo: 8;
 			} w_gg_ih;
 			struct {
-				unsigned char tgt_g: 4;
-				unsigned char src1_g: 4;
-				unsigned char funct: 4;
-				unsigned char src2_g: 4;
-				unsigned char tgt_c: 3;
-				unsigned char mix: 1;
-				unsigned char src_c: 3;
-				unsigned char neg: 1;
+				bits_t tgt_g: 4;
+				bits_t src1_g: 4;
+				bits_t funct: 4;
+				bits_t src2_g: 4;
+				bits_t tgt_c: 3;
+				bits_t neg_tc: 1;
+				bits_t src_c: 3;
+				bits_t neg_sc: 1;
 			} w_cc3g;
 		};
 	};
 } instruction_t;
 #pragma pack(pop)
+
+static inline uint32_t get_imm_w_g_il(instruction_t *instr) {
+	uint16_t imm = instr->w_g_il.imm20_lo;
+	imm |= instr->w_g_il.imm20_md << 8;
+	imm |= instr->w_g_il.imm20_hi << 16;
+	return imm;
+}
 
 static inline uint16_t get_imm_w_gg_ih(instruction_t *instr) {
 	uint16_t imm = instr->w_gg_ih.imm16_lo;

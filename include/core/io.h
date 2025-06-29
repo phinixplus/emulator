@@ -6,7 +6,7 @@
 
 // Utilities for Bitfields //
 
-#define MASK(WIDTH, OFFSET) (((1 << (WIDTH)) - 1) << (OFFSET))
+#define MASK(WIDTH, OFFSET) (((1ULL << (WIDTH)) - 1ULL) << (OFFSET))
 #define EXTRACT(SRC, WIDTH, OFFSET) (((SRC) & MASK(WIDTH, OFFSET)) >> (OFFSET))
 
 // IO Registry Section //

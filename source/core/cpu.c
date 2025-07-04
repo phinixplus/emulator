@@ -59,11 +59,11 @@ typedef struct opcode {
 	enum instr_type {
 		INVALID = 0, W_G_IL,
 		W_GG_IH, W_CG_IH, W_CC3G
-	} type: 8;
+	} type;
 	union {
 		enum instr_w_g_il {
 			JNLil, JMPil
-		} w_g_il: 8;
+		} w_g_il;
 		enum instr_w_gg_ih {
 			INP, OUT,
 			LBSih, LBUih, SBih,
@@ -71,13 +71,13 @@ typedef struct opcode {
 			LWSih, LWUih, SWih,
 			ADDih, ANDih, IORih, XORih,
 			ALUI, RLUI,
-		} w_gg_ih: 8;
+		} w_gg_ih;
 		enum instr_w_cg_ih {
 			CJNLih, CJMPih
-		} w_cg_ih: 8;
-		enum instr_w_cc_3g {
+		} w_cg_ih;
+		enum instr_w_cc3g {
 			ADDr, SUBr
-		} w_cc3g: 8;
+		} w_cc3g;
 	};
 } opcode_t;
 
@@ -88,16 +88,16 @@ typedef struct opcode {
 static const opcode_t opcodes[256] = {
 	PUT_WGGIH(0x10, INP),   PUT_WGGIH(0x11, OUT),
 
-	PUT_WGGIH(0x14, LBSih), PUT_WGGIH(0x15, LBUih),
-	PUT_WGGIH(0x16, LHSih), PUT_WGGIH(0x17, LHUih),
-	PUT_WGGIH(0x18, LWSih), PUT_WGGIH(0x19, LWUih),
+	PUT_WGGIH(0x14, LBSih),  PUT_WGGIH(0x15, LBUih),
+	PUT_WGGIH(0x16, LHSih),  PUT_WGGIH(0x17, LHUih),
+	PUT_WGGIH(0x18, LWSih),  PUT_WGGIH(0x19, LWUih),
 
-	PUT_WGGIH(0x1C, SBih), PUT_WGGIH(0x1D, SHih), PUT_WGGIH(0x1E, SWih),
+	PUT_WGGIH(0x1C, SBih),   PUT_WGGIH(0x1D, SHih), PUT_WGGIH(0x1E, SWih),
 
-	PUT_WGGIH(0x20, ADDih), PUT_WGGIH(0x21, ANDih),
-	PUT_WGGIH(0x22, IORih), PUT_WGGIH(0x23, XORih),
+	PUT_WGGIH(0x20, ADDih),  PUT_WGGIH(0x21, ANDih),
+	PUT_WGGIH(0x22, IORih),  PUT_WGGIH(0x23, XORih),
 
-	PUT_WGGIH(0x28, ALUI),  PUT_WGGIH(0x29, RLUI),
+	PUT_WGGIH(0x28, ALUI),   PUT_WGGIH(0x29, RLUI),
 
 	PUT_WGIL( 0x30, JNLil),  PUT_WGIL( 0x31,  JMPil),
 	PUT_WCGIH(0x32, CJNLih), PUT_WCGIH(0x33, CJMPih),
@@ -106,9 +106,8 @@ static const opcode_t opcodes[256] = {
 };
 
 void cpu_new(cpu_t *cpu, mem_t mem, io_t io) {
-	// Make sure our compound types got packed correctly.
+	// Make sure the instruction formats union is packed correctly.
 	assert(sizeof(instruction_t) == sizeof(uint32_t));
-	assert(sizeof(opcode_t) == 2);
 
 	cpu->step_count = 0;
 	cpu->start_addr = 0;
@@ -178,15 +177,29 @@ static uint32_t execute_w_cg_ih(
 	cpu_t *cpu, enum instr_w_cg_ih type,
 	uint32_t imm, uint32_t tgt_g, bool tgt_c
 ) {
-
+	switch(type) {
+		case CJNLih:
+			break;
+		case CJMPih:
+			break;
+	}
 }
 
-static struct {uint32_t g; bool c;} execute_w_cc3g(
-	cpu_t *cpu, enum instr_w_cg_ih type,
+static struct w_cc3g_ret {uint32_t g; bool c;} execute_w_cc3g(
+	cpu_t *cpu, enum instr_w_cc3g type,
 	uint32_t tgt_g, uint32_t src1_g, uint32_t src2_g,
 	bool tgt_c, bool src_c
 ) {
-	
+	uint32_t ret_g = tgt_g;
+	bool ret_c = tgt_c;
+	switch(type) {
+		case ADDr:
+			break;
+		case SUBr:
+			break;
+	}
+
+	return (struct w_cc3g_ret){.g = ret_g, .c = ret_c};
 }
 
 void cpu_execute(cpu_t *cpu) {

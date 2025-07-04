@@ -17,9 +17,9 @@ LIBS_EXISTING = pthread
 
 C_COMPILER = gcc
 override C_FLAGS_COM += -Wall -Wextra -pedantic
-override C_FLAGS_DBG += ${C_FLAGS_COM} -g -std=c11 -D_POSIX_C_SOURCE=200809L
-override C_FLAGS_REL += ${C_FLAGS_COM} -Werror -O2 -std=c11 -D_POSIX_C_SOURCE=200809L
-override C_FLAGS_LNK += ${C_FLAGS_COM}
+override C_FLAGS_DBG += $(C_FLAGS_COM) -g -std=c11 -D_POSIX_C_SOURCE=200809L
+override C_FLAGS_REL += $(C_FLAGS_COM) -Werror -O2 -std=c11 -D_POSIX_C_SOURCE=200809L
+override C_FLAGS_LNK += $(C_FLAGS_COM)
 
 ASSEMBLER = customasm
 override ASM_FLAGS += -q -flogisim8 archdef/archdef_emu.asm

@@ -52,8 +52,10 @@
 ; ---------------------------------------------------------------------------- ;
 
 #subruledef flag {
-	C => 0`2
-	K => 1`2
+	C => 0`2	; Carry (unsigned >= 0)
+	K => 1`2	; Karry   (signed >= 0)
+	V => 2`2	; Overflow (?)
+	S => 3`3	; Special  (?)
 	!{base: flag} =>
 		({base} ^ 2)`2
 }
@@ -63,10 +65,11 @@
 	and => 1`1
 }
 
-#fn w_cc3g(funct, tgt_g, src1_g, src2_g, nt, tgt_c, ns, src_c) =>
-	src1_g`4 @ tgt_g`4 @ src2_g`4 @ funct`4 @ ns`1 @ src_c`3 @ nt`1 @ tgt_c`3
 #fn w_g_il(tgt_g, imm20) => imm20[19:16] @ tgt_g`4 @ imm20[15:0]
 #fn w_gg_ih(tgt_g, src_g, imm16) => src_g`4 @ tgt_g`4 @ imm16`16
+#fn w_cg_ih(tgt_g, nt, tgt_c, imm16) =>  nt`1 @ tgt_c`3 @ tgt_g`4 @ imm16`16
+#fn w_cc3g(funct, tgt_g, src1_g, src2_g, nt, tgt_c, ns, src_c) =>
+	src1_g`4 @ tgt_g`4 @ src2_g`4 @ funct`4 @ ns`1 @ src_c`3 @ nt`1 @ tgt_c`3
 
 ; ---------------------------------------------------------------------------- ;
 
@@ -75,15 +78,52 @@
 		rel = ({lbl} - $) >> 1
 		assert($[0:0] == 0 && {lbl}[0:0] == 0, "Misaligned jump target.")
 		assert(rel[31:20] == 0 || rel[31:20] == 0xFFF, "Jump target out of range.")
-		0x10`8 @ w_g_il({dg}, rel)
+		0x30`8 @ w_g_il({dg}, rel)
+	}
+	jmp [ ip {sg: data} {lbl: u32} ] => {
+		rel = ({lbl} - $) >> 1
+		assert($[0:0] == 0 && {lbl}[0:0] == 0, "Misaligned jump target.")
+		assert(rel[31:20] == 0 || rel[31:20] == 0xFFF, "Jump target out of range.")
+		0x31`8 @ w_g_il({sg}, rel)
 	}
 }
 
 #ruledef native_w_gg_ih {
-	inp {dg: data} [ {sg: data} {ih: u16} ] => 0x20`8 @ w_gg_ih({dg}, {sg}, {ih})
-	out {dg: data} [ {sg: data} {ih: u16} ] => 0x21`8 @ w_gg_ih({dg}, {sg}, {ih})
+	inp {dg: data} [ {sg: data} {ih: u16} ] => 0x10`8 @ w_gg_ih({dg}, {sg}, {ih})
+	out {dg: data} [ {sg: data} {ih: u16} ] => 0x11`8 @ w_gg_ih({dg}, {sg}, {ih})
 
-	add {dg: data} {sg: data} {ih: i16} => 0x22`8 @ w_gg_ih({dg}, {sg}, {ih})
+	lbs {dg: data} [ {sg: data} {ih: u16} ] => 0x14`8 @ w_gg_ih({dg}, {sg}, {ih})
+	lbu {dg: data} [ {sg: data} {ih: u16} ] => 0x15`8 @ w_gg_ih({dg}, {sg}, {ih})
+	lhs {dg: data} [ {sg: data} {ih: u16} ] => 0x16`8 @ w_gg_ih({dg}, {sg}, {ih})
+	lhu {dg: data} [ {sg: data} {ih: u16} ] => 0x17`8 @ w_gg_ih({dg}, {sg}, {ih})
+	lws {dg: data} [ {sg: data} {ih: u16} ] => 0x18`8 @ w_gg_ih({dg}, {sg}, {ih})
+	lwu {dg: data} [ {sg: data} {ih: u16} ] => 0x19`8 @ w_gg_ih({dg}, {sg}, {ih})
+	sb  {dg: data} [ {sg: data} {ih: u16} ] => 0x1C`8 @ w_gg_ih({dg}, {sg}, {ih})
+	sh  {dg: data} [ {sg: data} {ih: u16} ] => 0x1D`8 @ w_gg_ih({dg}, {sg}, {ih})
+	sb  {dg: data} [ {sg: data} {ih: u16} ] => 0x1E`8 @ w_gg_ih({dg}, {sg}, {ih})
+
+	add {dg: data} {sg: data} {ih: i16} => 0x20`8 @ w_gg_ih({dg}, {sg}, {ih})
+	and {dg: data} {sg: data} {ih: i16} => 0x21`8 @ w_gg_ih({dg}, {sg}, {ih})
+	ior {dg: data} {sg: data} {ih: i16} => 0x22`8 @ w_gg_ih({dg}, {sg}, {ih})
+	xor {dg: data} {sg: data} {ih: i16} => 0x23`8 @ w_gg_ih({dg}, {sg}, {ih})
+
+	lui {dg: data} {sg: data} {ih: i16}    => 0x28`8 @ w_gg_ih({dg}, {sg}, {ih})
+	lui {dg: data} ip {sg: data} {ih: i16} => 0x29`8 @ w_gg_ih({dg}, {sg}, {ih})
+}
+
+#ruledef native_w_cg_ih {
+	jnl {dg: data} [ ip {lbl: u32} ] if {sc: cond} => {
+		rel = ({lbl} - $) >> 1
+		assert($[0:0] == 0 && {lbl}[0:0] == 0, "Misaligned jump target.")
+		assert(rel[31:16] == 0 || rel[31:16] == 0xFFFF, "Jump target out of range.")
+		0x32`8 @ w_cg_ih({dg}, {sc}[3:3], {sc}, rel)
+	}
+	jmp [ ip {sg: data} {lbl: u32} ] if {sc: cond} => {
+		rel = ({lbl} - $) >> 1
+		assert($[0:0] == 0 && {lbl}[0:0] == 0, "Misaligned jump target.")
+		assert(rel[31:16] == 0 || rel[31:16] == 0xFFFF, "Jump target out of range.")
+		0x33`8 @ w_cg_ih({sg}, {sc}[3:3], {sc}, rel)
+	}
 }
 
 #ruledef native_w_cc3g {

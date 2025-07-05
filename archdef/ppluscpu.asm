@@ -52,12 +52,12 @@
 ; ---------------------------------------------------------------------------- ;
 
 #subruledef flag {
-	C => 0`2	; Carry (unsigned >= 0)
-	K => 1`2	; Karry   (signed >= 0)
-	V => 2`2	; Overflow (?)
+	C => 0`3	; Carry (unsigned >= 0)
+	K => 1`3	; Karry   (signed >= 0)
+	V => 2`3	; Overflow (?)
 	S => 3`3	; Special  (?)
 	!{base: flag} =>
-		({base} ^ 2)`2
+		({base} ^ 4)`3
 }
 
 #subruledef mix {
@@ -68,8 +68,8 @@
 #fn w_g_il(tgt_g, imm20) => imm20[19:16] @ tgt_g`4 @ imm20[15:0]
 #fn w_gg_ih(tgt_g, src_g, imm16) => src_g`4 @ tgt_g`4 @ imm16`16
 #fn w_cg_ih(tgt_g, nt, tgt_c, imm16) =>  nt`1 @ tgt_c`3 @ tgt_g`4 @ imm16`16
-#fn w_cc3g(funct, tgt_g, src1_g, src2_g, nt, tgt_c, ns, src_c) =>
-	src1_g`4 @ tgt_g`4 @ src2_g`4 @ funct`4 @ ns`1 @ src_c`3 @ nt`1 @ tgt_c`3
+#fn w_cc3g(funct, tgt1_g, tgt2_g, src_g, nt, tgt_c, ns, src_c) =>
+	tgt2_g`4 @ tgt1_g`4 @ src_g`4 @ funct`4 @ nt`1 @ tgt_c`3 @ ns`1 @ src_c`3
 
 ; ---------------------------------------------------------------------------- ;
 
@@ -80,7 +80,7 @@
 		assert(rel[31:20] == 0 || rel[31:20] == 0xFFF, "Jump target out of range.")
 		0x30`8 @ w_g_il({dg}, rel)
 	}
-	jmp [ ip {sg: data} {lbl: u32} ] => {
+	jmp [ ip {lbl: u32} {sg: data} ] => {
 		rel = ({lbl} - $) >> 1
 		assert($[0:0] == 0 && {lbl}[0:0] == 0, "Misaligned jump target.")
 		assert(rel[31:20] == 0 || rel[31:20] == 0xFFF, "Jump target out of range.")
@@ -129,10 +129,10 @@
 #ruledef native_w_cc3g {
 	add {dg: data} {s1g: data} {s2g: data}, {m: mix} {dc: cond} {sc: cond} {f: flag} => {
 		assert({dc}[3:3] == 0, "Unimplemented pseudo-instruction.")
-		0x40`8 @ w_cc3g({f}[0:0] @ {m}, {dg}, {s1g}, {s2g}, {f}[1:1], {dc}, {sc}[3:3], {sc})
+		0x40`8 @ w_cc3g({m} @ {f}[1:0], {dg}, {s1g}, {s2g}, {f}[2:2], {dc}, {sc}[3:3], {sc})
 	}
 	sub {dg: data} {s1g: data} {s2g: data}, {m: mix} {dc: cond} {sc: cond} {f: flag} => {
 		assert({dc}[3:3] == 0, "Unimplemented pseudo-instruction.")
-		0x41`8 @ w_cc3g({f}[0:0] @ {m}, {dg}, {s1g}, {s2g}, {f}[1:1], {dc}, {sc}[3:3], {sc})
+		0x41`8 @ w_cc3g({m} @ {f}[1:0], {dg}, {s1g}, {s2g}, {f}[2:2], {dc}, {sc}[3:3], {sc})
 	}
 }

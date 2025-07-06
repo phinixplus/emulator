@@ -118,7 +118,7 @@
 		assert(rel[31:16] == 0 || rel[31:16] == 0xFFFF, "Jump target out of range.")
 		0x32`8 @ w_cg_ih({dg}, {sc}[3:3], {sc}, rel)
 	}
-	jmp [ ip {sg: data} {lbl: u32} ] if {sc: cond} => {
+	jmp [ ip {lbl: u32} {sg: data} ] if {sc: cond} => {
 		rel = ({lbl} - $) >> 1
 		assert($[0:0] == 0 && {lbl}[0:0] == 0, "Misaligned jump target.")
 		assert(rel[31:16] == 0 || rel[31:16] == 0xFFFF, "Jump target out of range.")

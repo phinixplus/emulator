@@ -98,11 +98,23 @@ int main(int argc, char **argv) {
 
 	// After cpu handle has been distributed, init and sendoff
 	cpu_new(&cpu, mem, io), ipm_new(&cpu);
+	struct timespec before, after;
+	clock_gettime(CLOCK_REALTIME, &before);
 	while(is_running()) cpu_execute(&cpu);
+	clock_gettime(CLOCK_REALTIME, &after);
 
+	// Report execution statistics
+	bool nsec_sec_carry = before.tv_nsec > after.tv_nsec;
+	long nsec_diff = after.tv_nsec - before.tv_nsec;
+	long sec_diff  = after.tv_sec  - before.tv_sec;
+	if(nsec_sec_carry) sec_diff -= 1, nsec_diff += 1000 * 1000 * 1000;
+	double exec_ms = sec_diff * 1e3 + nsec_diff * 1e-6;
 	fprintf(stderr,
-		"CPU halted after %lu step(s).\n",
-		cpu.step_count
+		"CPU halted after %lu step(s).\n"
+		"CPU executed for %.3lf ms.\n"
+		"Overall average speed of %.1lf MHz.\n",
+		cpu.step_count, exec_ms,
+		cpu.step_count / exec_ms / 1e3
 	);
 
 	exit(EXIT_SUCCESS);

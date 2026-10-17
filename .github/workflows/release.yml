@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: Install MUSL
-      run: sudo apt install -y musl-dev musl-tools
+      run: apt-get install -y musl-dev musl-tools
 
     - name: Setup Rust Toolchain
       uses: actions-rs/toolchain@v1
@@ -44,15 +44,13 @@ jobs:
   compile-pplusemu:
     name: Compile PPlusEmu Binary
     runs-on: ubuntu-latest
+    container: ghcr.io/martandrmc/xenial-builder:latest
     steps:
-    - name: Install MUSL
-      run: sudo apt install -y musl-dev musl-tools
-
     - name: Checkout Project
       uses: actions/checkout@v4
 
     - name: Compile Executable
-      run: make C_COMPILER=musl-gcc C_FLAGS_LNK=-static release
+      run: make release
 
     - name: Store Compiled Binary
       uses: actions/upload-artifact@v4

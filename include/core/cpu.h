@@ -17,8 +17,7 @@ typedef struct cpu {
 
 	// Architectural State
 	uint32_t ip, jp;
-	uint32_t data[16];
-	uint32_t addr[16];
+	uint32_t gpr[16];
 	uint8_t cond;
 
 	// Interfaces

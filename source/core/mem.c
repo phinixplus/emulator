@@ -86,7 +86,7 @@ uint32_t mem_fetch_word(mem_t mem, uint32_t address) {
 	mem_datum_t data = mem[address >> 2];
 	if(address & 1) {
 		uint8_t tmp1 = data.bytes[0];
-		uint8_t tmp2 = data.bytes[0];
+		uint8_t tmp2 = data.bytes[2];
 		data.bytes[0] = data.bytes[1];
 		data.bytes[2] = data.bytes[3];
 		data.bytes[1] = tmp1;
@@ -122,7 +122,7 @@ void mem_store_word(mem_t mem, uint32_t address, uint32_t word) {
 	previous.word = word;
 	if(address & 1) {
 		uint8_t tmp1 = previous.bytes[0];
-		uint8_t tmp2 = previous.bytes[0];
+		uint8_t tmp2 = previous.bytes[2];
 		previous.bytes[0] = previous.bytes[1];
 		previous.bytes[2] = previous.bytes[3];
 		previous.bytes[1] = tmp1;

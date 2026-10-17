@@ -8,7 +8,7 @@
 #include <poll.h>
 #include <pthread.h>
 #include <unistd.h>
-#include <netinet/ip.h>
+#include <netinet/in.h>
 #include <sys/socket.h>
 
 #include "io/portdefs.h"
